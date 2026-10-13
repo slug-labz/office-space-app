@@ -3232,7 +3232,7 @@ html {
 }
 
 /* Both lists in this panel are cards of the same shape holding the same names — an offer and an
-   employee. Seen in the running app: `ariel-review` appeared twice with nothing between them. */
+   employee. Seen in the running app: `wren-review` appeared twice with nothing between them. */
 .maintained__group {
   margin: var(--space-3) 0 var(--space-1);
   color: var(--muted-foreground);

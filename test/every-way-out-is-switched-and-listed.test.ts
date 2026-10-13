@@ -464,12 +464,12 @@ test('with the switch off, a git source is refused before anything is sent, and 
   assert.match(browsed.problem, /set not to make its own network requests/, 'the refusal does not say why')
 
   const record: Provenance = {
-    id: 'ariel-review',
-    source: { kind: 'git', at: url, file: 'agents/ariel-review.md' },
+    id: 'wren-review',
+    source: { kind: 'git', at: url, file: 'agents/wren-review.md' },
     hiredHash: 'x',
     hiredAt: '2026-09-16',
   }
-  const checked = (await checkOnThem([record], allowed)).get('ariel-review')
+  const checked = (await checkOnThem([record], allowed)).get('wren-review')
   assert.ok(checked && !checked.seen, 'a check reported seeing a source it was not allowed to open')
   assert.equal(checked.why, 'unreachable', 'switched off is not the colleague withdrawing their file')
   assert.match(checked.detail, /set not to make its own network requests/)

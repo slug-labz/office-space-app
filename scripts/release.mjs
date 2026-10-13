@@ -106,6 +106,27 @@ function run(cmd, args, opts = {}) {
   return out === null ? '' : out.trim()
 }
 
+/**
+ * The lines of a command's output, **untrimmed**.
+ *
+ * `run()` trims, which is right for a SHA or a branch name and wrong wherever a column position
+ * carries meaning. `git status --porcelain` is such a format: every line begins with a
+ * two-character status field, so ` M path` has a leading space, and trimming the whole output
+ * strips it from the **first line only**. That line's prefix becomes one character, every
+ * `slice(3)` after it cuts into the path, and a path test silently fails for whichever file sorts
+ * first.
+ *
+ * Measured on 2026-10-12, mid-release: ` M graphify-out/.graphify_labels.json` arrived as
+ * `M graphify-out/…`, `slice(3)` gave `raphify-out/…`, the `graphify-out/` exclusion below missed
+ * it, and the script refused a release over a generated file it is written to ignore. The second
+ * such file, not being first, was excluded correctly — which is what made it look like a rule
+ * about that one file rather than about position.
+ */
+function lines(cmd, args, opts = {}) {
+  const out = execFileSync(cmd, args, { encoding: 'utf8', cwd: ROOT, ...opts })
+  return (out === null ? '' : out).split('\n').filter(Boolean)
+}
+
 function tryRun(cmd, args, opts = {}) {
   try {
     return { ok: true, out: run(cmd, args, opts) }
@@ -213,7 +234,7 @@ if (branch !== 'main' && !flags.dryRun) {
   )
 }
 
-const dirty = run('git', ['status', '--porcelain']).split('\n').filter(Boolean)
+const dirty = lines('git', ['status', '--porcelain'])
   .filter((l) => !l.slice(3).startsWith('graphify-out/'))
 if (dirty.length && !flags.allowDirty) {
   die(
@@ -392,9 +413,34 @@ say(`Office Space ${TAG} — ${shortSha} on ${branch}${flags.dryRun ? ' (dry run
 const checks = assertChecksReallyRan(sha)
 say('')
 
+/**
+ * Whether anybody actually means to sign this build.
+ *
+ * electron-builder probes the login keychain for a Developer ID **before** it reads
+ * `build.mac.identity`, so `identity: null` does not stop it — it raises a system panel asking for
+ * the keychain, on whoever's screen is in front of the machine. Measured on 2026-10-01: it
+ * happened twice in one session, on a machine whose only identity belonged to an unrelated
+ * application, and the build sat blocked on the panel ignoring SIGTERM.
+ *
+ * `docs/release.md` tells a human to export `CSC_IDENTITY_AUTO_DISCOVERY=false`. A script whose
+ * reason to exist is that a release should not be a thing somebody has to remember has no
+ * business making them remember that.
+ *
+ * It is keyed on a **named** identity rather than on `null`, because `docs/release.md` says
+ * buying the membership means setting `build.mac.identity` to a Developer ID — and forcing
+ * discovery off for somebody who has just paid for one would be a worse bug than this fixes.
+ * Omitted is treated the same as `null`: that file calls omitted *"search the keychain and fail
+ * confusingly"*, which is the panel, not an intention to sign.
+ */
+const signingIsWanted = typeof pkg.build?.mac?.identity === 'string'
+
 if (!flags.notesOnly) {
+  if (!signingIsWanted) say('Nothing here is signed, so the keychain is not searched.')
   say('Building (npm run dist) …')
-  const build = tryRun('npm', ['run', 'dist'], { stdio: 'inherit' })
+  const buildEnv = signingIsWanted
+    ? process.env
+    : { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+  const build = tryRun('npm', ['run', 'dist'], { stdio: 'inherit', env: buildEnv })
   if (!build.ok) die(EXIT.build, `release.mjs: npm run dist failed (exit ${build.status}).`)
 }
 

@@ -74,7 +74,7 @@ mergeable sooner, but it puts five features' test changes inside a PR about temp
 
 *Revisit if:* this is decided. Record the answer as a new entry that names D17.
 
-## D18 — V4 "The arrival" is withdrawn as a "Done looks like" item · open · proposed by claude (review session), signed by the plan reviewer · 2026-09-17
+## D18 — V4 "The arrival" is withdrawn as a "Done looks like" item · taken · proposed 2026-09-17 by claude (review session), signed by the plan reviewer; decided by the maintainer · 2026-10-13
 
 V4 asks for a fresh clone that opens onto a building site, and five projects that open onto five
 floors of lit windows. Since D14 there is no building. At a first launch nothing is running: in the
@@ -94,6 +94,15 @@ there is nothing to return to stays as a queued task (TASKS.md row 50), not as a
 - **An exterior or site plan.** This is the second drawing mode D14 gave up.
 - **An empty-lot or "next office" card.** Projects sort by name, so a new project does not land
   in that slot.
+
+**Decided 2026-10-13.** The maintainer, asked what should happen to the animation now that the app
+is published: *"we dont need that animation u can remove it of the plan."* That settles the half of
+TASKS row 49 that was D18. The other two questions on that row — whether the arrival was ever for
+the pitch, and whether `scripts/boot-time.mjs` stays — were not asked and are not answered here.
+
+§8's line is marked `[-]`, withdrawn, with no command, as this decision proposed in September. It
+is not deleted: a withdrawn outcome that leaves no trace is indistinguishable from one nobody
+thought of, and the three rounds of argument above are the reason this one is not worth building.
 - **The release page as V4.** This is a pitch asset, not an outcome in the app.
 - **First-run signals:**
   - the registry missing at boot, which goes stale while the app runs;

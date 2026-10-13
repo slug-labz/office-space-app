@@ -50,7 +50,7 @@ export function renderMaintained(
    * A heading, because both lists in this panel hold cards with the same shape and the same
    * names in them.
    *
-   * Seen in the running app: after hiring `ariel-review`, the panel showed `ariel-review` twice —
+   * Seen in the running app: after hiring `wren-review`, the panel showed `wren-review` twice —
    * once as somebody the source is offering and once as somebody who works here — with nothing
    * between them saying which was which. Two identical names, two different meanings, no label.
    */

@@ -37,7 +37,7 @@ const validManifest = (over: Record<string, unknown> = {}) =>
 // ───────────────────────────────────────────────────────────── built-in ────
 
 test('the built-in theme needs nothing and always works', () => {
-  const frames = proceduralTheme.framesFor('ariel-review')
+  const frames = proceduralTheme.framesFor('wren-review')
   assert.equal(proceduralTheme.redistributable, true, 'the shipped theme must be shippable')
   for (const d of PAINT_DIRECTIONS) {
     assert.equal(frames.frames[d].length, 3, `${d} needs three steps`)

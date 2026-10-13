@@ -30,29 +30,29 @@ import {
 
 const HIRED = 'sha-at-hire'
 
-const ariel: Provenance = {
-  id: 'ariel-review',
-  source: { kind: 'git', at: 'https://github.com/company/agents.git', file: 'agents/ariel-review.md' },
+const wren: Provenance = {
+  id: 'wren-review',
+  source: { kind: 'git', at: 'https://github.com/company/agents.git', file: 'agents/wren-review.md' },
   hiredHash: HIRED,
   hiredAt: '2026-03-04',
 }
 
 test('unchanged on both sides is the same as theirs', () => {
-  const s = standingOf(ariel, HIRED, { seen: true, hash: HIRED })
+  const s = standingOf(wren, HIRED, { seen: true, hash: HIRED })
   assert.deepEqual(s, { here: 'as-hired', there: 'as-hired' })
   assert.equal(updateIsSafe(s), false, 'nothing to take')
   assert.match(saidPlainly(s), /same as theirs/)
 })
 
 test('they changed theirs and we did not: an update, and a safe one', () => {
-  const s = standingOf(ariel, HIRED, { seen: true, hash: 'sha-ariel-rewrote-it' })
+  const s = standingOf(wren, HIRED, { seen: true, hash: 'sha-wren-rewrote-it' })
   assert.deepEqual(s, { here: 'as-hired', there: 'moved-on' })
   assert.equal(updateIsSafe(s), true)
   assert.equal(updateWouldOverwriteLocalWork(s), false)
 })
 
 test('we changed ours and they did not: no update exists to take', () => {
-  const s = standingOf(ariel, 'sha-we-tuned-it', { seen: true, hash: HIRED })
+  const s = standingOf(wren, 'sha-we-tuned-it', { seen: true, hash: HIRED })
   assert.deepEqual(s, { here: 'edited', there: 'as-hired' })
   assert.equal(updateIsSafe(s), false)
   assert.match(saidPlainly(s), /Edited here.*[Tt]heirs is unchanged/)
@@ -67,7 +67,7 @@ test('we changed ours and they did not: no update exists to take', () => {
  * it is the only one that proves the two fields are really two facts.
  */
 test('both changed: not offered as a plain update, and named as the reason', () => {
-  const s = standingOf(ariel, 'sha-we-tuned-it', { seen: true, hash: 'sha-ariel-rewrote-it' })
+  const s = standingOf(wren, 'sha-we-tuned-it', { seen: true, hash: 'sha-wren-rewrote-it' })
   assert.deepEqual(s, { here: 'edited', there: 'moved-on' })
   assert.equal(updateIsSafe(s), false, 'never a one-click action')
   assert.equal(updateWouldOverwriteLocalWork(s), true, 'and the caller can tell which unsafe this is')
@@ -84,9 +84,9 @@ test('both changed: not offered as a plain update, and named as the reason', () 
  * as up to date. `unchecked` is the resting state of every row, because checking costs a clone.
  */
 test('not looked, could not reach, and deleted upstream are three different answers', () => {
-  const notLooked = standingOf(ariel, HIRED, null)
-  const noReach = standingOf(ariel, HIRED, { seen: false, why: 'unreachable', detail: 'getaddrinfo ENOTFOUND' })
-  const deleted = standingOf(ariel, HIRED, { seen: false, why: 'withdrawn', detail: 'not in the source' })
+  const notLooked = standingOf(wren, HIRED, null)
+  const noReach = standingOf(wren, HIRED, { seen: false, why: 'unreachable', detail: 'getaddrinfo ENOTFOUND' })
+  const deleted = standingOf(wren, HIRED, { seen: false, why: 'withdrawn', detail: 'not in the source' })
 
   assert.equal(notLooked.there, 'unchecked')
   assert.equal(noReach.there, 'unreachable')
@@ -101,14 +101,14 @@ test('not looked, could not reach, and deleted upstream are three different answ
 
 /* Every silence still carries the local half — the two fields never collapse into one. */
 test('a local edit is still reported when the source cannot be reached', () => {
-  const s = standingOf(ariel, 'sha-we-tuned-it', { seen: false, why: 'unreachable', detail: 'offline' })
+  const s = standingOf(wren, 'sha-we-tuned-it', { seen: false, why: 'unreachable', detail: 'offline' })
   assert.deepEqual(s, { here: 'edited', there: 'unreachable' })
   assert.match(saidPlainly(s), /Edited here/)
   assert.match(saidPlainly(s), /nothing is known about it/, 'and no guess about theirs')
 })
 
 test('an employee who was fired is missing here, whatever the source says', () => {
-  const s = standingOf(ariel, null, { seen: true, hash: HIRED })
+  const s = standingOf(wren, null, { seen: true, hash: HIRED })
   assert.deepEqual(s, { here: 'missing', there: 'as-hired' })
   assert.match(saidPlainly(s), /No longer in this office/)
 })

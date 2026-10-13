@@ -400,8 +400,8 @@ const MAX_AGENT_DEPTH = 8
  * to be named after the agent inside it.
  *
  * They disagree the moment anybody hand-writes one. Measured on a flat directory: a file
- * `code-reviewer.md` declaring `name: ariel` put **ariel** on the floor, and firing ariel
- * answered *"There is no agent called ariel."* The office showed somebody and then denied they
+ * `code-reviewer.md` declaring `name: wren` put **wren** on the floor, and firing wren
+ * answered *"There is no agent called wren."* The office showed somebody and then denied they
  * existed.
  *
  * ## Why it recurses
@@ -580,7 +580,7 @@ function skillNameIn(dirPath: string, fm: Record<string, string>): string {
  * Where a skill's directory actually is, by the name the office shows for it.
  *
  * `removeSkill` built `skills/<id>/` from the id, while the id came from `name:` inside the file.
- * The `ariel` bug one entity over: measured on a directory `dirname-here/` whose SKILL.md declares
+ * The `wren` bug one entity over: measured on a directory `dirname-here/` whose SKILL.md declares
  * `name: frontmatter-name`, the shelf showed **frontmatter-name** and removing it answered *"There
  * is no skill called frontmatter-name."* The office showed something and then denied it existed.
  *

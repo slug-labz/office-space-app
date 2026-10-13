@@ -2077,7 +2077,7 @@ function registerHandlers(): void {
 
     /*
      * A row for each turn the manager changed something in. `about.who` is who it was at the
-     * time, not who the manager is now — a record written when `ariel` ran the office should not
+     * time, not who the manager is now — a record written when `wren` ran the office should not
      * be relabelled because somebody has since been promoted.
      */
     const ownTurns: SentDispatch[] = []

@@ -185,8 +185,8 @@ export async function hire(root: string, request: Hire): Promise<RosterResult> {
    * Asked, not built — and this guard was the last place in the file still building.
    *
    * `exists(`${path}.off`)` only sees a benched agent whose *filename* matches the name being
-   * hired. Measured: a benched `code-reviewer.md.off` declaring `name: ariel` is on the bench as
-   * **ariel**, and hiring "ariel" succeeded — putting ariel on the floor and on the bench at the
+   * hired. Measured: a benched `code-reviewer.md.off` declaring `name: wren` is on the bench as
+   * **wren**, and hiring "wren" succeeded — putting wren on the floor and on the bench at the
    * same time, which is precisely the state the paragraph above says this guard exists to stop.
    * The guard was right about the rule and wrong about where to look.
    */
@@ -238,8 +238,8 @@ export async function hire(root: string, request: Hire): Promise<RosterResult> {
  * id from `name:` inside the file. Two definitions of one fact, agreeing only while every file
  * happened to be named after the agent inside it.
  *
- * Measured on a flat directory, no nesting involved: `code-reviewer.md` declaring `name: ariel`
- * puts **ariel** on the floor, and `fire('ariel')` answered *"There is no agent called ariel."*
+ * Measured on a flat directory, no nesting involved: `code-reviewer.md` declaring `name: wren`
+ * puts **wren** on the floor, and `fire('wren')` answered *"There is no agent called wren."*
  * The office showed somebody and then denied they existed — and every operation here that acts on
  * an existing agent had it.
  *

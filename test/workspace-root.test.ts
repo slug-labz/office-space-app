@@ -79,13 +79,13 @@ test('THE ONE THAT MATTERS: a second run never re-seeds over the user\'s edits',
   const edited = join(first.root, '.claude', 'agents', 'manager.md')
   await writeFile(edited, 'Mine now. Do not touch.')
   // …and they hired somebody.
-  await writeFile(join(first.root, '.claude', 'agents', 'ariel.md'), '---\nname: ariel\n---\nA reviewer.')
+  await writeFile(join(first.root, '.claude', 'agents', 'wren.md'), '---\nname: wren\n---\nA reviewer.')
 
   const second = await resolveWorkspaceRoot({ packaged: true, appRoot, templateRoot: appRoot, userData, env: {} })
 
   assert.equal(second.why, 'existing', 'a second run re-seeded, which would overwrite their work')
   assert.equal(await readFile(edited, 'utf8'), 'Mine now. Do not touch.')
-  assert.ok((await readdir(join(second.root, '.claude', 'agents'))).includes('ariel.md'))
+  assert.ok((await readdir(join(second.root, '.claude', 'agents'))).includes('wren.md'))
 })
 
 test('a seeding failure is reported, and the office still opens', async (t) => {

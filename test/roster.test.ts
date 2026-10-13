@@ -31,8 +31,8 @@ async function workspace(t: TestContext): Promise<string> {
 /** The refusal, or '' when it worked. `RosterResult` is a union and `reason` is only on one arm. */
 const why = (r: Awaited<ReturnType<typeof hire>>): string => (r.ok ? '' : r.reason)
 
-const ariel = {
-  id: 'ariel',
+const wren = {
+  id: 'wren',
   description: 'Reviews PRs the way a senior engineer would.',
   tools: ['Read', 'Grep'],
   model: 'opus',
@@ -43,10 +43,10 @@ test('THE PROPERTY: a hire is discovered exactly as a hand-written file is', asy
   // The whole design in one assertion. If this ever fails, something has started keeping a
   // second list, and the floor will eventually show somebody who is not there.
   const root = await workspace(t)
-  assert.equal((await hire(root, ariel)).ok, true)
+  assert.equal((await hire(root, wren)).ok, true)
 
   const found = await discoverWorkspace(root)
-  const employee = found.employees.find((e) => e.id === 'ariel')
+  const employee = found.employees.find((e) => e.id === 'wren')
 
   assert.ok(employee, 'discovery did not see the agent we just wrote')
   assert.equal(employee.description, 'Reviews PRs the way a senior engineer would.')
@@ -65,12 +65,12 @@ test('THE PROPERTY: a hire is discovered exactly as a hand-written file is', asy
 
 test('omitting tools means inheriting, so the field is absent rather than empty', async (t) => {
   // `tools:` with nothing after it means "no tools", which is the opposite of what null means.
-  const text = agentFile({ ...ariel, tools: null })
+  const text = agentFile({ ...wren, tools: null })
   assert.ok(!text.includes('tools:'), 'wrote an empty tools field, which means "none"')
 
   const root = await workspace(t)
-  await hire(root, { ...ariel, tools: null })
-  const employee = (await discoverWorkspace(root)).employees.find((e) => e.id === 'ariel')
+  await hire(root, { ...wren, tools: null })
+  const employee = (await discoverWorkspace(root)).employees.find((e) => e.id === 'wren')
   assert.equal(employee?.tools, null, 'discovery read it as something other than inheritance')
 })
 
@@ -78,12 +78,12 @@ test('hiring never overwrites somebody who already exists', async (t) => {
   // Almost always a typo or two people adding the same name, and replacing an agent file
   // somebody wrote is not a recoverable kind of wrong.
   const root = await workspace(t)
-  await hire(root, ariel)
-  const second = await hire(root, { ...ariel, prompt: 'Something else entirely.' })
+  await hire(root, wren)
+  const second = await hire(root, { ...wren, prompt: 'Something else entirely.' })
 
   assert.equal(second.ok, false)
-  assert.match(second.ok === false ? second.reason : '', /already an agent called ariel/)
-  assert.match(await readFile(join(root, '.claude', 'agents', 'ariel.md'), 'utf8'), /You review code/)
+  assert.match(second.ok === false ? second.reason : '', /already an agent called wren/)
+  assert.match(await readFile(join(root, '.claude', 'agents', 'wren.md'), 'utf8'), /You review code/)
 })
 
 test('a name that cannot be a filename is refused, with the reason', async () => {
@@ -103,7 +103,7 @@ test('a name that cannot be a filename is refused, with the reason', async () =>
 
 test('an agent with no description is refused, because the manager picks by description', async (t) => {
   const root = await workspace(t)
-  const got = await hire(root, { ...ariel, description: '   ' })
+  const got = await hire(root, { ...wren, description: '   ' })
   assert.equal(got.ok, false)
   assert.match(got.ok === false ? got.reason : '', /how the manager decides who to give work to/)
 })
@@ -112,38 +112,38 @@ test('disabling makes them vanish from discovery, and re-enabling brings them ba
   // A rename rather than a flag: every reader of `*.md` stops seeing them at once, and nobody
   // has to know a new field exists. The one that forgets is the one that draws an empty desk.
   const root = await workspace(t)
-  await hire(root, ariel)
+  await hire(root, wren)
 
-  assert.equal((await disable(root, 'ariel')).ok, true)
-  assert.equal((await discoverWorkspace(root)).employees.find((e) => e.id === 'ariel'), undefined)
-  assert.deepEqual(await disabled(root), ['ariel'])
+  assert.equal((await disable(root, 'wren')).ok, true)
+  assert.equal((await discoverWorkspace(root)).employees.find((e) => e.id === 'wren'), undefined)
+  assert.deepEqual(await disabled(root), ['wren'])
   // And discovery is not upset by the file it can now see and does not recognise.
   assert.deepEqual((await discoverWorkspace(root)).problems, [])
 
-  assert.equal((await enable(root, 'ariel')).ok, true)
-  assert.ok((await discoverWorkspace(root)).employees.find((e) => e.id === 'ariel'))
+  assert.equal((await enable(root, 'wren')).ok, true)
+  assert.ok((await discoverWorkspace(root)).employees.find((e) => e.id === 'wren'))
   assert.deepEqual(await disabled(root), [])
 })
 
 test('disabling is reversible by hand, which is the point of choosing a rename', async (t) => {
   const root = await workspace(t)
-  await hire(root, ariel)
-  await disable(root, 'ariel')
+  await hire(root, wren)
+  await disable(root, 'wren')
 
   const files = await readdir(join(root, '.claude', 'agents'))
-  assert.deepEqual(files, ['ariel.md.off'], 'somebody looking at the directory should see what happened')
+  assert.deepEqual(files, ['wren.md.off'], 'somebody looking at the directory should see what happened')
 })
 
 test('firing removes them, and says so when there is nobody to fire', async (t) => {
   const root = await workspace(t)
-  await hire(root, ariel)
+  await hire(root, wren)
 
-  assert.equal((await fire(root, 'ariel')).ok, true)
-  assert.equal((await discoverWorkspace(root)).employees.find((e) => e.id === 'ariel'), undefined)
+  assert.equal((await fire(root, 'wren')).ok, true)
+  assert.equal((await discoverWorkspace(root)).employees.find((e) => e.id === 'wren'), undefined)
 
-  const again = await fire(root, 'ariel')
+  const again = await fire(root, 'wren')
   assert.equal(again.ok, false)
-  assert.match(again.ok === false ? again.reason : '', /no agent called ariel/)
+  assert.match(again.ok === false ? again.reason : '', /no agent called wren/)
 })
 
 test('a hand-written agent is managed exactly like one we wrote', async (t) => {
@@ -311,16 +311,16 @@ test('THE BUG: an id that climbs out of the workspace is refused, not followed',
 test('and the guard did not break firing somebody who is real', async (t) => {
   // The other half. A check that refused everything would pass the test above and be worse.
   const root = await workspace(t)
-  await hire(root, ariel)
+  await hire(root, wren)
 
-  assert.equal((await disable(root, 'ariel')).ok, true, 'a real agent can be benched')
-  assert.equal((await enable(root, 'ariel')).ok, true, 'and brought back')
-  assert.equal((await fire(root, 'ariel')).ok, true, 'and let go')
+  assert.equal((await disable(root, 'wren')).ok, true, 'a real agent can be benched')
+  assert.equal((await enable(root, 'wren')).ok, true, 'and brought back')
+  assert.equal((await fire(root, 'wren')).ok, true, 'and let go')
   assert.deepEqual(await readdir(join(root, '.claude', 'agents')), [], 'the file is gone')
 
   // A hyphenated name is a real name — the guard must not be tighter than `whyInvalid`, which is
   // what the hire form tells people is allowed.
-  await hire(root, { ...ariel, id: 'code-reviewer-2' })
+  await hire(root, { ...wren, id: 'code-reviewer-2' })
   assert.equal((await fire(root, 'code-reviewer-2')).ok, true)
 })
 
@@ -340,32 +340,32 @@ test('hiring a benched name is refused, because a benched employee is still an e
   // written. POSIX `rename` replaces silently, so the new employee's description and prompt
   // were gone and `enable()` returned `{ ok: true }` for it.
   const root = await workspace(t)
-  await hire(root, { ...ariel, description: 'THE ORIGINAL' })
-  await disable(root, 'ariel')
+  await hire(root, { ...wren, description: 'THE ORIGINAL' })
+  await disable(root, 'wren')
 
-  const again = await hire(root, { ...ariel, description: 'A SECOND ONE', prompt: 'different' })
+  const again = await hire(root, { ...wren, description: 'A SECOND ONE', prompt: 'different' })
 
   assert.equal(again.ok, false, 'hired over a benched employee — their prompt is now reachable only by undo')
   assert.match(why(again), /bench/i, 'the refusal has to say where they are, or the name looks free')
   assert.deepEqual(
     await readdir(join(root, '.claude', 'agents')),
-    ['ariel.md.off'],
+    ['wren.md.off'],
     'the refused hire still wrote a file',
   )
-  const kept = await readFile(join(root, '.claude', 'agents', 'ariel.md.off'), 'utf8')
+  const kept = await readFile(join(root, '.claude', 'agents', 'wren.md.off'), 'utf8')
   assert.match(kept, /THE ORIGINAL/, 'the benched file was overwritten by a hire that was refused')
 })
 
 test('a benched employee can be let go, and the button that says so tells the truth', async (t) => {
   // The bench row offers *Fire*. It built `${id}.md` and unlinked that, so it answered "There is
-  // no agent called ariel" about a row on screen at that moment, badged "sent home", describing
-  // the file as `ariel.md.off`. Failing safe and failing dishonestly at once; the office's third
+  // no agent called wren" about a row on screen at that moment, badged "sent home", describing
+  // the file as `wren.md.off`. Failing safe and failing dishonestly at once; the office's third
   // standing order is the one that was broken.
   const root = await workspace(t)
-  await hire(root, ariel)
-  await disable(root, 'ariel')
+  await hire(root, wren)
+  await disable(root, 'wren')
 
-  const gone = await fire(root, 'ariel')
+  const gone = await fire(root, 'wren')
 
   assert.equal(gone.ok, true, why(gone))
   assert.deepEqual(await readdir(join(root, '.claude', 'agents')), [], 'the file is still there')
@@ -378,7 +378,7 @@ test('the manager cannot be fired or sent home, at the layer that writes the fil
   // a guarantee. This is the guarantee. It matters because `fire` is an `unlink` with no undo
   // and `main.ts` throws `no manager agent found` without one.
   const root = await workspace(t)
-  await writeFile(join(root, '.claude', 'agents', 'manager.md'), agentFile({ ...ariel, id: 'manager' }))
+  await writeFile(join(root, '.claude', 'agents', 'manager.md'), agentFile({ ...wren, id: 'manager' }))
 
   const fired = await fire(root, 'manager')
   const benched = await disable(root, 'manager')
@@ -399,7 +399,7 @@ test('...including a manager who is not called manager', async (t) => {
   // guarantee that protects a strict subset of the check it stands behind is not one. Caught in
   // review, by writing the `boss.md` this test writes.
   const root = await workspace(t)
-  await writeFile(join(root, '.claude', 'agents', 'boss.md'), agentFile({ ...ariel, id: 'boss', tools: ['Task', 'Read'] }))
+  await writeFile(join(root, '.claude', 'agents', 'boss.md'), agentFile({ ...wren, id: 'boss', tools: ['Task', 'Read'] }))
 
   const fired = await fire(root, 'boss', 'boss')
   const benched = await disable(root, 'boss', 'boss')
@@ -415,7 +415,7 @@ test('...including a manager who is not called manager', async (t) => {
 
   // And the default still holds when nobody says otherwise — an empty workspace has no manager
   // to name, and `main` falls back to this rather than passing nothing meaningful.
-  await writeFile(join(root, '.claude', 'agents', 'manager.md'), agentFile({ ...ariel, id: 'manager' }))
+  await writeFile(join(root, '.claude', 'agents', 'manager.md'), agentFile({ ...wren, id: 'manager' }))
   assert.equal((await fire(root, 'manager')).ok, false, 'the default name lost its protection')
 })
 
@@ -430,17 +430,17 @@ test('firing with two files refuses, rather than deleting the one you are not lo
   // three that cannot be taken back, and it was the one without the guard.
   const root = await workspace(t)
   const agents = join(root, '.claude', 'agents')
-  await writeFile(join(agents, 'ariel.md'), agentFile({ ...ariel, description: 'AT A DESK' }))
-  await writeFile(join(agents, 'ariel.md.off'), agentFile({ ...ariel, description: 'ON THE BENCH' }))
+  await writeFile(join(agents, 'wren.md'), agentFile({ ...wren, description: 'AT A DESK' }))
+  await writeFile(join(agents, 'wren.md.off'), agentFile({ ...wren, description: 'ON THE BENCH' }))
 
-  const gone = await fire(root, 'ariel')
+  const gone = await fire(root, 'wren')
 
   assert.equal(gone.ok, false, 'fired one of the two and reported success for it')
-  assert.match(why(gone), /ariel\.md\b/, 'the refusal does not name the file at the desk')
-  assert.match(why(gone), /ariel\.md\.off/, 'the refusal does not name the file on the bench')
+  assert.match(why(gone), /wren\.md\b/, 'the refusal does not name the file at the desk')
+  assert.match(why(gone), /wren\.md\.off/, 'the refusal does not name the file on the bench')
   assert.deepEqual(
     (await readdir(agents)).sort(),
-    ['ariel.md', 'ariel.md.off'],
+    ['wren.md', 'wren.md.off'],
     'a refused fire deleted something',
   )
 })
@@ -452,16 +452,16 @@ test('neither rename replaces a file, in a directory somebody has edited by hand
   // exactly what this runs against.
   const root = await workspace(t)
   const agents = join(root, '.claude', 'agents')
-  await writeFile(join(agents, 'ariel.md'), agentFile({ ...ariel, description: 'AT A DESK' }))
-  await writeFile(join(agents, 'ariel.md.off'), agentFile({ ...ariel, description: 'ON THE BENCH' }))
+  await writeFile(join(agents, 'wren.md'), agentFile({ ...wren, description: 'AT A DESK' }))
+  await writeFile(join(agents, 'wren.md.off'), agentFile({ ...wren, description: 'ON THE BENCH' }))
 
-  const back = await enable(root, 'ariel')
-  const away = await disable(root, 'ariel')
+  const back = await enable(root, 'wren')
+  const away = await disable(root, 'wren')
 
   assert.equal(back.ok, false, 'enable replaced the live file with the benched one')
   assert.equal(away.ok, false, 'disable replaced the benched file with the live one')
-  assert.match(await readFile(join(agents, 'ariel.md'), 'utf8'), /AT A DESK/)
-  assert.match(await readFile(join(agents, 'ariel.md.off'), 'utf8'), /ON THE BENCH/)
+  assert.match(await readFile(join(agents, 'wren.md'), 'utf8'), /AT A DESK/)
+  assert.match(await readFile(join(agents, 'wren.md.off'), 'utf8'), /ON THE BENCH/)
 })
 
 test('a name that walks out of the agents directory is refused by all four, not just hire', async (t) => {
@@ -523,7 +523,7 @@ test('...but a name the office itself drew is acted on, whatever it looks like',
   const root = await workspace(t)
   const agents = join(root, '.claude', 'agents')
   for (const name of ['Reviewer', 'my_helper', 'data.scientist']) {
-    await writeFile(join(agents, `${name}.md`), agentFile({ ...ariel, id: name }))
+    await writeFile(join(agents, `${name}.md`), agentFile({ ...wren, id: name }))
   }
 
   for (const name of ['Reviewer', 'my_helper', 'data.scientist']) {
@@ -544,11 +544,11 @@ test('the bench and discovery agree about what an agent file is', async (t) => {
   // failure this branch spent two rounds removing, arriving from a third direction.
   const root = await workspace(t)
   const agents = join(root, '.claude', 'agents')
-  await writeFile(join(agents, 'ariel.md.off'), agentFile(ariel))
-  await writeFile(join(agents, '.hidden.md.off'), agentFile({ ...ariel, id: 'hidden' }))
+  await writeFile(join(agents, 'wren.md.off'), agentFile(wren))
+  await writeFile(join(agents, '.hidden.md.off'), agentFile({ ...wren, id: 'hidden' }))
   await writeFile(join(agents, '.DS_Store.md.off'), 'not an agent\n')
 
-  assert.deepEqual(await disabled(root), ['ariel'], 'the bench lists files discovery would not')
+  assert.deepEqual(await disabled(root), ['wren'], 'the bench lists files discovery would not')
 
   // And the file is left alone rather than tidied away: it is not ours to remove.
   assert.ok((await readdir(agents)).includes('.hidden.md.off'))
@@ -567,20 +567,20 @@ test('the first hire into a workspace nobody has prepared works', async (t) => {
    * button, and that button could not succeed.
    */
   const bare = await tempDir(t, 'office-bare-')
-  const made = await hire(bare, ariel)
+  const made = await hire(bare, wren)
   assert.equal(made.ok, true, why(made))
 
   // And it is a real hire, not just a written file: the same discovery every other one goes
   // through has to find it.
   const found = await discoverWorkspace(bare)
-  assert.deepEqual(found.employees.map((e) => e.id), ['ariel'])
+  assert.deepEqual(found.employees.map((e) => e.id), ['wren'])
 })
 
 test('a hire into a workspace where .claude exists but agents/ does not works', async (t) => {
   // The commonest real shape by some distance: they have run `claude` here at least once.
   const half = await tempDir(t, 'office-half-')
   await mkdir(join(half, '.claude'), { recursive: true })
-  assert.equal((await hire(half, ariel)).ok, true)
+  assert.equal((await hire(half, wren)).ok, true)
 })
 
 // ── one definition of where an agent's file is ──────────────────────────────────────────────
@@ -592,30 +592,30 @@ test('an agent whose filename differs from its name can be benched and fired', a
    * definitions of one fact, agreeing only while every file happened to be named after the agent
    * inside it.
    *
-   * Measured before the fix: a file `code-reviewer.md` declaring `name: ariel` put **ariel** on
-   * the floor, and `fire('ariel')` answered "There is no agent called ariel." The office showed
+   * Measured before the fix: a file `code-reviewer.md` declaring `name: wren` put **wren** on
+   * the floor, and `fire('wren')` answered "There is no agent called wren." The office showed
    * somebody and then denied they existed.
    */
   const root = await workspace(t)
   await writeFile(
     join(root, '.claude', 'agents', 'code-reviewer.md'),
-    '---\nname: ariel\ndescription: Reviews things.\ntools: Read\n---\n\nYou review.\n',
+    '---\nname: wren\ndescription: Reviews things.\ntools: Read\n---\n\nYou review.\n',
     'utf8',
   )
 
   const ws = await discoverWorkspace(root)
-  assert.deepEqual(ws.employees.map((e) => e.id), ['ariel'], 'discovery no longer reads the declared name')
+  assert.deepEqual(ws.employees.map((e) => e.id), ['wren'], 'discovery no longer reads the declared name')
 
-  const benched = await disable(root, 'ariel')
+  const benched = await disable(root, 'wren')
   assert.equal(benched.ok, true, why(benched))
   assert.match(benched.ok ? benched.path : '', /code-reviewer\.md\.off$/, 'renamed a path built from the id')
 
   // And back, to the file it came from rather than to one named after the agent.
-  const back = await enable(root, 'ariel')
+  const back = await enable(root, 'wren')
   assert.equal(back.ok, true, why(back))
   assert.match(back.ok ? back.path : '', /code-reviewer\.md$/)
 
-  assert.equal((await fire(root, 'ariel')).ok, true)
+  assert.equal((await fire(root, 'wren')).ok, true)
 })
 
 test('an agent in a subdirectory is on the floor, because Claude Code registers it', async (t) => {
@@ -669,18 +669,18 @@ test('hiring the name of a benched agent is refused however their file is named'
    *
    * It looked in the wrong place. `exists(`<id>.md.off`)` only sees a benched agent whose
    * *filename* matches the name. Measured: a benched `code-reviewer.md.off` declaring `name:
-   * ariel` is on the bench as **ariel**, and hiring "ariel" succeeded — putting ariel on the
+   * wren` is on the bench as **wren**, and hiring "wren" succeeded — putting wren on the
    * floor and on the bench at once, which is the state the guard exists to stop.
    */
   const root = await workspace(t)
   await writeFile(
     join(root, '.claude', 'agents', 'code-reviewer.md.off'),
-    '---\nname: ariel\ndescription: Benched reviewer.\n---\n\nYou review.\n',
+    '---\nname: wren\ndescription: Benched reviewer.\n---\n\nYou review.\n',
     'utf8',
   )
-  assert.deepEqual(await disabled(root), ['ariel'])
+  assert.deepEqual(await disabled(root), ['wren'])
 
-  const again = await hire(root, ariel)
+  const again = await hire(root, wren)
   assert.equal(again.ok, false, 'hired a name that is already on the bench')
   // And it names the file that is actually there, so somebody told to deal with it can find it.
   assert.match(why(again), /code-reviewer\.md\.off/)

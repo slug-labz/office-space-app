@@ -562,7 +562,7 @@ export interface OfficeApi {
    *
    * All four write the same files a person writes by hand — there is no parallel list, and
    * `describe()` remains the only thing that says who exists. A rejection comes back as a
-   * reason in words, not a thrown error: "there is already an agent called ariel" is something
+   * reason in words, not a thrown error: "there is already an agent called wren" is something
    * to show somebody, and an exception is something to swallow.
    */
   hire(request: HireRequest): Promise<RosterOutcome>

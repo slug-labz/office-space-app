@@ -610,13 +610,13 @@ test('an agent file that names itself is unaffected', async (t) => {
   await mkdir(join(root, '.claude', 'agents'), { recursive: true })
   await writeFile(
     join(root, '.claude', 'agents', 'file-name-differs.md'),
-    '---\nname: ariel\ndescription: Reviews things.\n---\n\nYou review.\n',
+    '---\nname: wren\ndescription: Reviews things.\n---\n\nYou review.\n',
     'utf8',
   )
 
   const found = await discoverWorkspace(root)
   // And the `name:` wins over the filename, which is what the CLI does.
-  assert.deepEqual(found.employees.map((e) => e.id), ['ariel'])
+  assert.deepEqual(found.employees.map((e) => e.id), ['wren'])
 })
 
 test('a SKILL.md one directory too deep is reported, not silently passed over', async (t) => {

@@ -86,6 +86,7 @@ if (args[0] === 'api' && /actions\\/runs\\?/.test(url)) {
 /** The stand-in for `npm run dist`: it records that it was asked, and builds nothing. */
 const NPM = `#!/bin/sh
 printf '%s\\n' "$*" >> "$NPM_LOG"
+printf 'CSC_IDENTITY_AUTO_DISCOVERY=%s\\n' "\${CSC_IDENTITY_AUTO_DISCOVERY-unset}" >> "$NPM_ENV_LOG"
 echo "stand-in npm: $*"
 exit 0
 `
@@ -113,6 +114,8 @@ interface Rig {
   releaseDir: string
   ghLog: string
   npmLog: string
+  /** What the build was spawned with — kept apart from `npmLog`, which other tests match exactly. */
+  npmEnvLog: string
   /** Written only if `gh release create` was reached, which no test here allows. */
   released: string
   env: Record<string, string>
@@ -171,6 +174,7 @@ async function aRepo(t: TestContext, { version = VERSION } = {}): Promise<Rig> {
     releaseDir: join(root, 'release'),
     ghLog: join(base, 'gh.log'),
     npmLog: join(base, 'npm.log'),
+    npmEnvLog: join(base, 'npm-env.log'),
     released: join(base, 'released'),
     env: {},
   }
@@ -179,6 +183,7 @@ async function aRepo(t: TestContext, { version = VERSION } = {}): Promise<Rig> {
     GH_LOG: rig.ghLog,
     GH_RELEASED: rig.released,
     NPM_LOG: rig.npmLog,
+    NPM_ENV_LOG: rig.npmEnvLog,
     GIT_ALLOW_PROTOCOL: 'file',
     ...A_RUN_THAT_RAN,
   }
@@ -230,6 +235,7 @@ function run(rig: Rig, args: string[] = [], env: Record<string, string> = {}, no
   // anywhere in a test should fail every assertion after it, not just the next one.
   rmSync(rig.ghLog, { force: true })
   rmSync(rig.npmLog, { force: true })
+  rmSync(rig.npmEnvLog, { force: true })
   const r = spawnSync(node, [join(rig.root, 'scripts', 'release.mjs'), ...args], {
     cwd: rig.root,
     env: { ...process.env, ...rig.env, ...env },
@@ -569,4 +575,75 @@ test('the notes name the files GitHub serves, and carry the hash of each file on
   assert.doesNotMatch(notes, /Office Space-0\.1\.0/, 'the notes name a file with a space in it, which GitHub does not serve')
   assert.ok(notes.includes(`shasum -a 256 -c ${SUMS}`), 'the notes do not say how to check the hashes')
   await nothingWasReleased(rig, 'the notes')
+})
+
+/**
+ * The two defects the first real release exposed, on 2026-10-12, while cutting v0.1.0.
+ *
+ * Neither was found by reading. Both were found by the script refusing something it should not
+ * have, and by a dialog landing on somebody's screen — which is the argument for a release script
+ * that is exercised rather than admired.
+ */
+
+test('a tree dirty only under graphify-out/ is released, whichever of those files sorts first', { skip: SKIP }, async (t) => {
+  const rig = await aRepo(t)
+  await withOrigin(rig)
+  anArtifact(rig, `Office Space-${VERSION}.dmg`)
+
+  // Two files, because the defect was positional rather than about a name. `run()` trimmed the
+  // whole of `git status --porcelain`, which strips the leading space from the FIRST line only, so
+  // that line's two-character status field became one, `slice(3)` cut into the path, and the
+  // `graphify-out/` exclusion missed it. The second file, not being first, was excluded correctly.
+  // With one file in the fixture the bug would be invisible half the time.
+  await mkdir(join(rig.root, 'graphify-out'), { recursive: true })
+  await writeFile(join(rig.root, 'graphify-out', '.graphify_labels.json'), '{}\n')
+  await writeFile(join(rig.root, 'graphify-out', 'GRAPH_REPORT.md'), 'generated\n')
+  gitIn(rig.root, 'add', '-A')
+  gitIn(rig.root, 'commit', '-qm', 'the generated graph')
+  gitIn(rig.root, 'push', '-q', 'origin', 'HEAD:refs/heads/main')
+  await writeFile(join(rig.root, 'graphify-out', '.graphify_labels.json'), '{"changed":1}\n')
+  await writeFile(join(rig.root, 'graphify-out', 'GRAPH_REPORT.md'), 'regenerated\n')
+
+  const r = run(rig, ['--version', VERSION, '--dry-run'])
+  assert.equal(r.code, 0, `refused a release over generated files it is written to ignore:\n${r.all}`)
+  assert.doesNotMatch(r.all, /uncommitted change/, 'the graphify-out exclusion did not apply to both files')
+})
+
+test('the build is not sent looking in the keychain when nothing here is signed', { skip: SKIP }, async (t) => {
+  const rig = await aRepo(t)
+  await withOrigin(rig)
+  anArtifact(rig, `Office Space-${VERSION}.dmg`)
+
+  const r = run(rig, ['--version', VERSION, '--dry-run'])
+  assert.equal(r.code, 0, r.all)
+  assert.deepEqual(
+    await lines(rig.npmEnvLog),
+    ['CSC_IDENTITY_AUTO_DISCOVERY=false'],
+    'electron-builder probes the login keychain before it reads build.mac.identity, and the panel ' +
+      'it raises lands on whoever is in front of the machine — twice, on 2026-10-01',
+  )
+  assert.match(r.stdout, /^Nothing here is signed, so the keychain is not searched\.$/m)
+})
+
+test('a named signing identity is left alone, so a membership somebody paid for still works', { skip: SKIP }, async (t) => {
+  const rig = await aRepo(t)
+  await withOrigin(rig)
+  anArtifact(rig, `Office Space-${VERSION}.dmg`)
+
+  // What `docs/release.md` says buying the membership looks like: an identity, named.
+  const pkg = JSON.parse(await readFile(join(rig.root, 'package.json'), 'utf8')) as Record<string, unknown>
+  pkg['build'] = { mac: { identity: 'Developer ID Application: Someone (ABCDE12345)' } }
+  await writeFile(join(rig.root, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`)
+  gitIn(rig.root, 'add', '-A')
+  gitIn(rig.root, 'commit', '-qm', 'somebody bought the membership')
+  gitIn(rig.root, 'push', '-q', 'origin', 'HEAD:refs/heads/main')
+
+  const r = run(rig, ['--version', VERSION, '--dry-run'])
+  assert.equal(r.code, 0, r.all)
+  assert.deepEqual(
+    await lines(rig.npmEnvLog),
+    ['CSC_IDENTITY_AUTO_DISCOVERY=unset'],
+    'forcing discovery off would break signing for somebody who has just paid for an identity',
+  )
+  assert.doesNotMatch(r.stdout, /keychain is not searched/)
 })

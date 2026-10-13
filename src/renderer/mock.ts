@@ -343,20 +343,20 @@ const api: OfficeApi = {
     const source = (file: string) => ({ kind: 'git' as const, at, file })
     if (!look) {
       return [
-        { id: 'ariel-review', source: source('agents/ariel-review.md'), hiredAt: '2026-03-04',
+        { id: 'wren-review', source: source('agents/wren-review.md'), hiredAt: '2026-03-04',
           standing: { here: 'as-hired' as const, there: 'unchecked' as const }, detail: null },
-        { id: 'ariel-release', source: source('agents/ariel-release.md'), hiredAt: '2026-05-19',
+        { id: 'wren-release', source: source('agents/wren-release.md'), hiredAt: '2026-05-19',
           standing: { here: 'edited' as const, there: 'unchecked' as const }, detail: null },
       ]
     }
     return [
-      { id: 'ariel-review', source: source('agents/ariel-review.md'), hiredAt: '2026-03-04',
+      { id: 'wren-review', source: source('agents/wren-review.md'), hiredAt: '2026-03-04',
         standing: { here: 'as-hired' as const, there: 'moved-on' as const }, detail: null },
-      { id: 'ariel-release', source: source('agents/ariel-release.md'), hiredAt: '2026-05-19',
+      { id: 'wren-release', source: source('agents/wren-release.md'), hiredAt: '2026-05-19',
         standing: { here: 'edited' as const, there: 'moved-on' as const }, detail: null },
-      { id: 'ariel-migrate', source: source('agents/ariel-migrate.md'), hiredAt: '2026-06-02',
+      { id: 'wren-migrate', source: source('agents/wren-migrate.md'), hiredAt: '2026-06-02',
         standing: { here: 'as-hired' as const, there: 'as-hired' as const }, detail: null },
-      { id: 'ariel-perf', source: source('agents/ariel-perf.md'), hiredAt: '2026-07-11',
+      { id: 'wren-perf', source: source('agents/wren-perf.md'), hiredAt: '2026-07-11',
         standing: { here: 'as-hired' as const, there: 'withdrawn' as const },
         detail: 'ENOENT: no such file or directory' },
       { id: 'dana-security', source: { kind: 'git' as const, at: 'git@github.com:dana/agents.git', file: 'security.md' },
@@ -369,7 +369,7 @@ const api: OfficeApi = {
       ? { problem: 'repository not found' }
       : {
           offered: [
-            { file: 'agents/ariel-review.md', id: 'ariel-review', description: 'Reviews PRs the way a senior engineer would.', taken: true },
+            { file: 'agents/wren-review.md', id: 'wren-review', description: 'Reviews PRs the way a senior engineer would.', taken: true },
             { file: 'agents/dana-security.md', id: 'dana-security', description: 'Looks for the mistakes that get shipped.', taken: false },
           ],
         },

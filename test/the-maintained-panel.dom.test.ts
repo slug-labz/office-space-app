@@ -49,7 +49,7 @@ function drawn(rows: readonly MaintainedRow[]): { host: El; text: string; button
 }
 
 test('a new version at the source is offered as a button', () => {
-  const { text, buttons } = drawn([row('ariel-review', { here: 'as-hired', there: 'moved-on' })])
+  const { text, buttons } = drawn([row('wren-review', { here: 'as-hired', there: 'moved-on' })])
   assert.equal(buttons.length, 1)
   assert.match(buttons[0]!.textContent ?? '', /Take their version/)
   assert.match(text, /changed theirs/)
@@ -62,13 +62,13 @@ test('a new version at the source is offered as a button', () => {
  * are asserted: a row that silently omitted the control would satisfy the first assertion alone.
  */
 test('when both copies have changed there is no button, and the space holds the reason', () => {
-  const { text, buttons } = drawn([row('ariel-review', { here: 'edited', there: 'moved-on' })])
+  const { text, buttons } = drawn([row('wren-review', { here: 'edited', there: 'moved-on' })])
   assert.equal(buttons.length, 0, 'no one-click update')
   assert.match(text, /changed theirs/, 'their change is stated')
   assert.match(text, /edited here/i, 'and ours')
   assert.match(text, /no one-click update/i, 'the absence is explained rather than left blank')
-  assert.match(text, /\.claude\/agents\/ariel-review\.md/, 'and both files are named, so it can be done by hand')
-  assert.match(text, /agents\/ariel-review\.md/)
+  assert.match(text, /\.claude\/agents\/wren-review\.md/, 'and both files are named, so it can be done by hand')
+  assert.match(text, /agents\/wren-review\.md/)
 })
 
 test('the four other answers each get their own sentence, and none of them gets a button', () => {
@@ -81,7 +81,7 @@ test('the four other answers each get their own sentence, and none of them gets 
   ]
   const sentences = new Set<string>()
   for (const [name, standing] of cases) {
-    const { text, buttons } = drawn([row('ariel-review', standing)])
+    const { text, buttons } = drawn([row('wren-review', standing)])
     assert.equal(buttons.length, 0, `${name} is not an update`)
     sentences.add(text)
   }
@@ -91,7 +91,7 @@ test('the four other answers each get their own sentence, and none of them gets 
 /* Wifi being off must not be drawn like a colleague retiring their agent. */
 test('unreachable and withdrawn are told apart by their tone as well as their words', () => {
   const toneOf = (standing: Standing): string => {
-    const { host } = drawn([row('ariel-review', standing)])
+    const { host } = drawn([row('wren-review', standing)])
     return all(host)
       .map((n) => n.className ?? '')
       .filter((c) => c.includes('maintained__standing--'))
@@ -141,7 +141,7 @@ test('a source that opened with nothing in it says that instead, and where it lo
 test('somebody whose name is already taken is offered without a button', () => {
   const offered: OfferedFromSource = {
     offered: [
-      { file: 'agents/ariel-review.md', id: 'ariel-review', description: 'Reviews PRs.', taken: true },
+      { file: 'agents/wren-review.md', id: 'wren-review', description: 'Reviews PRs.', taken: true },
       { file: 'agents/dana-security.md', id: 'dana-security', description: 'Finds the mistakes.', taken: false },
     ],
   }
@@ -154,7 +154,7 @@ test('somebody whose name is already taken is offered without a button', () => {
   assert.match(buttons[0]!.textContent ?? '', /Hire dana-security/)
 
   const text = nodes.map((n) => n.textContent ?? '').join(' ')
-  assert.match(text, /already has somebody called ariel-review/)
+  assert.match(text, /already has somebody called wren-review/)
   assert.match(text, /Rename one of them first/)
 })
 
@@ -167,18 +167,18 @@ test('nothing is drawn before a source has been looked at', () => {
 /*
  * Found by looking at the running app.
  *
- * After hiring `ariel-review`, the panel held two lists of identically-shaped cards and
- * `ariel-review` was the first name in both — once as somebody the source offers, once as
+ * After hiring `wren-review`, the panel held two lists of identically-shaped cards and
+ * `wren-review` was the first name in both — once as somebody the source offers, once as
  * somebody who works here — with nothing between them saying which was which. Both lists now
  * name themselves.
  */
 test('both lists say what they are, because the same name appears in both', () => {
   const offers = document.createElement('div') as unknown as El
   renderOffered(offers as unknown as HTMLElement, {
-    offered: [{ file: 'agents/ariel-review.md', id: 'ariel-review', description: '', taken: true }],
+    offered: [{ file: 'agents/wren-review.md', id: 'wren-review', description: '', taken: true }],
   }, () => {})
 
-  const { host } = drawn([row('ariel-review', { here: 'as-hired', there: 'as-hired' })])
+  const { host } = drawn([row('wren-review', { here: 'as-hired', there: 'as-hired' })])
 
   const headingIn = (n: El): string[] =>
     all(n)

@@ -48,15 +48,15 @@ const look = (name: string) => {
 test('the same name always produces the same character', () => {
   // The whole scaling story depends on this: an agent looks identical on every machine,
   // forever, with nothing persisted anywhere.
-  assert.deepEqual(look('ariel-review'), look('ariel-review'))
-  assert.deepEqual(look('Ariel-Review'), look('ariel-review'), 'case must not matter')
+  assert.deepEqual(look('wren-review'), look('wren-review'))
+  assert.deepEqual(look('Wren-Review'), look('wren-review'), 'case must not matter')
   assert.deepEqual(look('  manager  '), look('manager'), 'whitespace must not matter')
 })
 
 test('provenance survives normalisation', () => {
   // Appearance is normalised, but the recipe still remembers the name it came from so a
   // character on the floor can be traced back to its file.
-  assert.equal(recipeFor('  Ariel-Review  ').source, '  Ariel-Review  ')
+  assert.equal(recipeFor('  Wren-Review  ').source, '  Wren-Review  ')
 })
 
 test('a realistic roster produces visibly different people', () => {
@@ -64,7 +64,7 @@ test('a realistic roster produces visibly different people', () => {
   // field is fine; sharing every field is what makes a floor look cloned.
   const names = [
     'manager', 'reviewer', 'builder', 'memory-keeper', 'tester', 'frontend', 'backend',
-    'designer', 'ariel-review', 'security-auditor', 'data-analyst', 'docs-writer',
+    'designer', 'wren-review', 'security-auditor', 'data-analyst', 'docs-writer',
   ]
   const fingerprints = names.map((n) => {
     const r = recipeFor(n)
@@ -190,7 +190,7 @@ test('the standing pose reaches the bottom of the frame', () => {
   // to leave are a quarter of a tile. The cast hovers, and the contact shadow draws in the
   // daylight underneath their feet rather than under them. It is invisible in a still until you
   // put the shadow next to it, and unmistakable the moment you do.
-  for (const name of ['manager', 'reviewer', 'builder', 'ariel-review']) {
+  for (const name of ['manager', 'reviewer', 'builder', 'wren-review']) {
     for (const direction of PAINT_DIRECTIONS) {
       const { top, bottom } = occupiedRows(paintFrame(recipeFor(name), direction, 0))
       assert.equal(bottom, FRAME_H - 1, `${name}/${direction}: standing pose floats ${FRAME_H - 1 - bottom}px`)
@@ -211,7 +211,7 @@ test('the stride lifts by exactly one row, and that is the bob', () => {
 
 test('nothing is drawn outside the frame', () => {
   // A stamp that runs off the edge must clip, not wrap around to the other side.
-  for (const name of ['manager', 'frontend', 'ariel-review']) {
+  for (const name of ['manager', 'frontend', 'wren-review']) {
     const frame = paintFrame(recipeFor(name), 'down', 1)
     for (let y = 0; y < FRAME_H; y++) {
       const left = pixelAt(frame, 0, y)

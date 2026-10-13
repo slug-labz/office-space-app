@@ -44,7 +44,7 @@ const TODAY = '2026-08-28'
 const on = (): boolean => true
 
 const REVIEW = `---
-name: ariel-review
+name: wren-review
 description: Reviews PRs the way a senior engineer would.
 tools: Read, Grep, Glob
 ---
@@ -53,7 +53,7 @@ Read the diff. Say what you would say in the review.
 `
 
 const RELEASE = `---
-name: ariel-release
+name: wren-release
 description: Checks a release is ready.
 ---
 
@@ -63,8 +63,8 @@ Look at the changelog.
 async function aSourceDirectory(t: TestContext): Promise<string> {
   const dir = await tempDir(t, 'office-test-source-')
   await mkdir(join(dir, 'agents'), { recursive: true })
-  await writeFile(join(dir, 'agents', 'ariel-review.md'), REVIEW)
-  await writeFile(join(dir, 'agents', 'ariel-release.md'), RELEASE)
+  await writeFile(join(dir, 'agents', 'wren-review.md'), REVIEW)
+  await writeFile(join(dir, 'agents', 'wren-release.md'), RELEASE)
   // The things a repo of agents also contains, and which are not colleagues.
   await writeFile(join(dir, 'README.md'), '# A colleague\'s agents\n\nClone this.\n')
   await writeFile(join(dir, 'LICENSE'), 'MIT\n')
@@ -83,8 +83,8 @@ test('a source offers its agents and not its README', async (t) => {
   const result = await browseSource(source, 'directory', on)
   assert.ok('offered' in result, 'the directory opened')
   const ids = result.offered.map((o) => o.id).sort()
-  assert.deepEqual(ids, ['ariel-release', 'ariel-review'])
-  assert.equal(result.offered.find((o) => o.id === 'ariel-review')?.file, 'agents/ariel-review.md')
+  assert.deepEqual(ids, ['wren-release', 'wren-review'])
+  assert.equal(result.offered.find((o) => o.id === 'wren-review')?.file, 'agents/wren-review.md')
   assert.match(result.offered[0]!.description, /release is ready/)
 })
 
@@ -100,11 +100,11 @@ test('hiring writes the file byte-for-byte and records where it came from', asyn
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   const hired = await hireFrom(root, { kind: 'directory', at: source, file: review.file }, review, TODAY)
   assert.equal(hired.ok, true)
 
-  const written = await readFile(join(root, '.claude', 'agents', 'ariel-review.md'), 'utf8')
+  const written = await readFile(join(root, '.claude', 'agents', 'wren-review.md'), 'utf8')
   assert.equal(written, REVIEW, 'the file is theirs, unaltered')
   assert.doesNotMatch(written, /hired-from|hiredAt|office-space/, 'nothing of ours is written into it')
 
@@ -117,17 +117,17 @@ test('hiring writes the file byte-for-byte and records where it came from', asyn
 test('hiring somebody whose name is taken is refused, not resolved', async (t) => {
   const source = await aSourceDirectory(t)
   const root = await anOffice(t)
-  await writeFile(join(root, '.claude', 'agents', 'ariel-review.md'), 'our own, entirely different\n')
+  await writeFile(join(root, '.claude', 'agents', 'wren-review.md'), 'our own, entirely different\n')
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   const hired = await hireFrom(root, { kind: 'directory', at: source, file: review.file }, review, TODAY)
 
   assert.equal(hired.ok, false)
-  assert.match((hired as { reason: string }).reason, /already has somebody called ariel-review/)
+  assert.match((hired as { reason: string }).reason, /already has somebody called wren-review/)
   assert.equal(
-    await readFile(join(root, '.claude', 'agents', 'ariel-review.md'), 'utf8'),
+    await readFile(join(root, '.claude', 'agents', 'wren-review.md'), 'utf8'),
     'our own, entirely different\n',
     'and the agent that was already here is untouched',
   )
@@ -145,21 +145,21 @@ test('editing either copy moves exactly one of the two facts', async (t) => {
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   const where = { kind: 'directory' as const, at: source, file: review.file }
   await hireFrom(root, where, review, TODAY)
   const record = (await recordedHires(root))[0]!
 
   const standing = async () =>
-    standingOf(record, await ourCopy(root, 'ariel-review'), (await checkOnThem([record], on)).get('ariel-review') ?? null)
+    standingOf(record, await ourCopy(root, 'wren-review'), (await checkOnThem([record], on)).get('wren-review') ?? null)
 
   assert.deepEqual(await standing(), { here: 'as-hired', there: 'as-hired' }, 'fresh from the source')
 
-  await writeFile(join(source, 'agents', 'ariel-review.md'), `${REVIEW}\nAnd check the tests.\n`)
+  await writeFile(join(source, 'agents', 'wren-review.md'), `${REVIEW}\nAnd check the tests.\n`)
   assert.deepEqual(await standing(), { here: 'as-hired', there: 'moved-on' }, 'the colleague edited theirs')
   assert.equal(updateIsSafe(await standing()), true)
 
-  await writeFile(join(root, '.claude', 'agents', 'ariel-review.md'), `${REVIEW}\nAnd our house style.\n`)
+  await writeFile(join(root, '.claude', 'agents', 'wren-review.md'), `${REVIEW}\nAnd our house style.\n`)
   assert.deepEqual(await standing(), { here: 'edited', there: 'moved-on' }, 'and now both have')
   assert.equal(updateIsSafe(await standing()), false, 'so it is not a one-click action')
 })
@@ -170,21 +170,21 @@ test('a file deleted at the source is withdrawn; a source that will not open is 
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   await hireFrom(root, { kind: 'directory', at: source, file: review.file }, review, TODAY)
   const record = (await recordedHires(root))[0]!
 
-  await rm(join(source, 'agents', 'ariel-review.md'))
-  assert.equal((await checkOnThem([record], on)).get('ariel-review')?.seen, false)
+  await rm(join(source, 'agents', 'wren-review.md'))
+  assert.equal((await checkOnThem([record], on)).get('wren-review')?.seen, false)
   assert.equal(
-    standingOf(record, await ourCopy(root, 'ariel-review'), (await checkOnThem([record], on)).get('ariel-review')!).there,
+    standingOf(record, await ourCopy(root, 'wren-review'), (await checkOnThem([record], on)).get('wren-review')!).there,
     'withdrawn',
     'the source opened and the file was not in it',
   )
 
   const gone: Provenance = { ...record, source: { ...record.source, at: join(tmpdir(), 'office-test-vanished') } }
   assert.equal(
-    standingOf(gone, await ourCopy(root, 'ariel-review'), (await checkOnThem([gone], on)).get('ariel-review')!).there,
+    standingOf(gone, await ourCopy(root, 'wren-review'), (await checkOnThem([gone], on)).get('wren-review')!).there,
     'unreachable',
     'and the source that never opened says nothing about the file',
   )
@@ -203,21 +203,21 @@ test('taking their version leaves the copy reading as the same as theirs', async
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   await hireFrom(root, { kind: 'directory', at: source, file: review.file }, review, TODAY)
 
   const theirNewVersion = `${REVIEW}\nAlso check the migration is reversible.\n`
-  await writeFile(join(source, 'agents', 'ariel-review.md'), theirNewVersion)
+  await writeFile(join(source, 'agents', 'wren-review.md'), theirNewVersion)
 
   const before = (await recordedHires(root))[0]!
-  const standingBefore = standingOf(before, await ourCopy(root, 'ariel-review'), (await checkOnThem([before], on)).get('ariel-review')!)
+  const standingBefore = standingOf(before, await ourCopy(root, 'wren-review'), (await checkOnThem([before], on)).get('wren-review')!)
   assert.equal(updateIsSafe(standingBefore), true)
 
   const took = await takeTheirs(root, before, theirNewVersion, '2026-09-01')
   assert.equal(took.ok, true)
 
   const after = (await recordedHires(root))[0]!
-  const standingAfter = standingOf(after, await ourCopy(root, 'ariel-review'), (await checkOnThem([after], on)).get('ariel-review')!)
+  const standingAfter = standingOf(after, await ourCopy(root, 'wren-review'), (await checkOnThem([after], on)).get('wren-review')!)
   assert.deepEqual(standingAfter, { here: 'as-hired', there: 'as-hired' }, 'level, and not reported as edited here')
   assert.equal(after.hiredAt, '2026-09-01', 'and the fixed point moved with it')
 })
@@ -234,14 +234,14 @@ test('a git source is cloned and read', async (t) => {
 
   const browsed = await browseSource(source, 'git', on)
   assert.ok('offered' in browsed, 'the clone succeeded')
-  assert.deepEqual(browsed.offered.map((o) => o.id).sort(), ['ariel-release', 'ariel-review'])
+  assert.deepEqual(browsed.offered.map((o) => o.id).sort(), ['wren-release', 'wren-review'])
 
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
   assert.equal(review.hash, digest(REVIEW), 'the digest survives the clone')
   await hireFrom(root, { kind: 'git', at: source, file: review.file }, review, TODAY)
   const record = (await recordedHires(root))[0]!
   assert.deepEqual(
-    standingOf(record, await ourCopy(root, 'ariel-review'), (await checkOnThem([record], on)).get('ariel-review')!),
+    standingOf(record, await ourCopy(root, 'wren-review'), (await checkOnThem([record], on)).get('wren-review')!),
     { here: 'as-hired', there: 'as-hired' },
   )
 })
@@ -301,8 +301,8 @@ test('a record file that will not parse refuses the write instead of replacing i
 
   const browsed = await browseSource(source, 'directory', on)
   assert.ok('offered' in browsed)
-  const review = browsed.offered.find((o) => o.id === 'ariel-review')!
-  const release = browsed.offered.find((o) => o.id === 'ariel-release')!
+  const review = browsed.offered.find((o) => o.id === 'wren-review')!
+  const release = browsed.offered.find((o) => o.id === 'wren-release')!
 
   const first = await hireFrom(root, { kind: 'directory', at: source, file: review.file }, review, TODAY)
   assert.equal(first.ok, true, 'the setup hire failed, so this test proves nothing')
@@ -328,7 +328,7 @@ test('a record file that will not parse refuses the write instead of replacing i
   // And nothing half-done: the refusal happens before the agent file, not after it, or the office
   // gains an employee it has no record of.
   await assert.rejects(
-    () => readFile(join(root, '.claude', 'agents', 'ariel-release.md'), 'utf8'),
+    () => readFile(join(root, '.claude', 'agents', 'wren-release.md'), 'utf8'),
     /ENOENT/,
     'the agent file was written even though the hire was refused',
   )
@@ -344,14 +344,14 @@ test('a record file that will not parse refuses the write instead of replacing i
  */
 test('reading their file gives the bytes, and says why when it cannot', async (t) => {
   const source = await aSourceDirectory(t)
-  const where = { kind: 'directory' as const, at: source, file: 'agents/ariel-review.md' }
+  const where = { kind: 'directory' as const, at: source, file: 'agents/wren-review.md' }
 
   const got = await readFromSource(where, on)
   assert.ok('content' in got, 'the file did not come back')
   assert.equal(got.content, REVIEW, 'and it is theirs, unaltered')
 
   // The file is gone from a source that still opens.
-  await rm(join(source, 'agents', 'ariel-review.md'))
+  await rm(join(source, 'agents', 'wren-review.md'))
   const missing = await readFromSource(where, on)
   assert.ok('problem' in missing)
   assert.match(missing.problem, /ENOENT/)
@@ -384,7 +384,7 @@ test('hiring several at once records where every one of them came from', async (
   const root = await anOffice(t)
 
   // Six from one source, hired together.
-  const extra = ['a', 'b', 'c', 'd'].map((n) => `ariel-${n}`)
+  const extra = ['a', 'b', 'c', 'd'].map((n) => `wren-${n}`)
   for (const id of extra) {
     await writeFile(join(source, 'agents', `${id}.md`), `---\nname: ${id}\ndescription: One of several.\n---\nBody.\n`)
   }

@@ -160,7 +160,7 @@ test('a skill that was used and then removed is still shown, marked as gone', ()
 
 test('a skill whose directory differs from its declared name can be removed', async (t) => {
   /*
-   * The `ariel` fault one entity over. `removeSkill` rebuilt the path as `skills/<id>/`, and the
+   * The `wren` fault one entity over. `removeSkill` rebuilt the path as `skills/<id>/`, and the
    * id comes from `name:` inside the SKILL.md — two definitions of one fact, agreeing only while
    * every directory happens to be named after the skill inside it.
    *

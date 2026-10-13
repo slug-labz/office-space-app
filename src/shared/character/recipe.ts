@@ -1,7 +1,7 @@
 /**
  * Character recipes.
  *
- * An employee's appearance is a pure function of their name. Drop `ariel-review.md` into
+ * An employee's appearance is a pure function of their name. Drop `wren-review.md` into
  * `.claude/agents/` and that reviewer gets a face — the same face on every machine, forever, with
  * nobody drawing anything. That is what makes the office scale: the art is derived, not
  * authored.

@@ -9,7 +9,7 @@
  *     it's always available to review our code, working like the real person would.
  *
  * The naive build of this is a download button, and it is wrong in a way that is invisible for
- * months. Copying `ariel-review.md` into `.claude/agents/` gives you *a snapshot of what their
+ * months. Copying `wren-review.md` into `.claude/agents/` gives you *a snapshot of what their
  * reviewer was on the day you copied it*. The roster then says "a colleague's reviewer" — a real
  * person's name, a real person's judgement — about a file that person has since rewritten twice.
  * Nothing on screen may lie, and a name is the loudest claim on it.
@@ -54,7 +54,7 @@ export interface Source {
   readonly kind: 'git' | 'directory'
   /** The remote or path, as it was given. Shown back verbatim — it is what somebody typed. */
   readonly at: string
-  /** Which file inside the source, e.g. `agents/ariel-review.md`. Always source-relative. */
+  /** Which file inside the source, e.g. `agents/wren-review.md`. Always source-relative. */
   readonly file: string
 }
 

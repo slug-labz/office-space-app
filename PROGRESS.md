@@ -1959,3 +1959,134 @@ since the fix. Row 98 says the same in Done.
 - The Done section's opening paragraph said every command below it ran at `e6fe5cb` on
   2026-09-17. One sentence was added so that row 98 is not covered by a claim that is not true
   of it.
+
+## 2026-10-13 — claude (wren rename), 07:41Z
+
+**The demo fixture is not somebody's name any more.** The owner asked for `ariel` gone from the
+tree. The 2026-10-08 entry above decided the opposite — *"208 lowercase `ariel` fixture ids were
+left untouched … nothing connects a lowercase id to a person once the identifying sentences are
+gone."* That reasoning is not disputed here. It is **overtaken by a fact it did not have**: the
+ids surface in the demo workspace, and the demo workspace is what the published screenshots show.
+An id nobody can connect to a person is a different thing from the same id rendered on a floor in
+a published image.
+
+**The rename.** `ariel` → `wren`, `Ariel` → `Wren`, case preserved, across **20 files**:
+**208 lowercase + 3 capital → 0**. `wren` is a bird, matching the `ostrich`/`kestrel` register
+`PLAN.md` already uses for sample names; it is not another person's name. Covered: agent ids, the
+compound ids `wren-review` `wren-release` `wren-migrate` `wren-perf`, `agents/*.md` filenames
+inside fixture strings, YAML `name:` values, hash fixtures, and prose in comments and test
+descriptions.
+
+Measured before editing: `ariel` never occurs inside a longer word — `git grep -oih
+'[a-z]*ariel[a-z]*'` returned only `ariel` (210) and `Ariel` (6) — so a two-rule substitution has
+no false positives. `wren` was not already an id, so nothing collided.
+
+**The diff is the name and nothing else**, proved rather than eyeballed: reverse-substituting
+`wren`→`ariel` across all 20 files reproduces `HEAD` byte for byte (`cmp`, 0 mismatches).
+
+**`test/character.test.ts`'s case-folding assertions were renamed in both spellings, not
+collapsed.** Lines 52 and 59 exist to prove capitalisation is not identity while provenance keeps
+the exact string. They now read `look('Wren-Review')` against `look('wren-review')`, and
+`recipeFor('  Wren-Review  ').source === '  Wren-Review  '`. A mixed-case spelling is still
+compared against a lowercase one, so the tests still prove what they were written to prove.
+
+**No test asserted a drawn appearance by value, so no expected number was changed.** Appearance
+is a pure function of the name (`src/shared/character/recipe.ts`), so the rename does change what
+the demo staff look like — measured, all four of them: `wren-review` goes from a bun to long
+hair, from `slim=false` to `slim=true`, and changes skin, hair and shirt. Every assertion that
+touches the renamed fixture is a *property* or *consistency* check rather than a value:
+determinism (self-comparison), case folding, provenance, fingerprint **uniqueness** across a
+12-name roster (set size, not colours), the standing pose reaching the frame bottom, no pixel
+bleed at the frame edges, and in `test/theme.test.ts` a frame **count**. The uniqueness check was
+the one that could have broken — a renamed fixture can land in an occupied hash bucket — and it
+passed. Nothing was adjusted to fit.
+
+**`git grep -ci "ariel" -- .` is not empty, and should not be.** Four lines remain, all in this
+file: the 2026-10-08 table recording the `Khalid`/`Ariel` redaction, its note on the two
+deliberate capitals, its note that the 208 ids were left — and this entry, which cannot describe
+the rename without naming it. `PROGRESS.md` is append-only, and rewriting a dated entry would make
+the record *false*, since no earlier session left `wren` ids untouched. The verify that holds is
+everything except this file.
+
+`Evidence:`
+
+```
+$ git grep -ci "ariel" -- . ':!PROGRESS.md'
+$ echo $?
+1
+$ git grep -ci "ariel" -- src test
+$ echo $?
+1
+$ git grep -ci "ariel" -- .
+PROGRESS.md:4
+$ npm run typecheck
+> tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json
+$ echo $?
+0
+```
+
+Every test file touched, run one file per command (`tsx --test a b` exits 0 on a missing `b`, so
+one per command), each exit code checked:
+
+```
+test/character.test.ts                            19/19  exit 0
+test/roster.test.ts                               32/32  exit 0
+test/hiring-from-a-colleagues-repo.test.ts        16/16  exit 0
+test/the-maintained-panel.dom.test.ts             13/13  exit 0
+test/an-employee-somebody-else-maintains.test.ts    9/9  exit 0
+test/every-way-out-is-switched-and-listed.test.ts 12/12  exit 0
+test/skills.test.ts                               13/13  exit 0
+test/theme.test.ts                                12/12  exit 0
+test/workspace-root.test.ts                       10/10  exit 0
+test/workspace.test.ts                            29/29  exit 0
+```
+
+165 tests, 0 fail, 0 cancelled. `npm run build` exits 0. Node pinned to v22.16.0, load 2.63 on 8
+cores at the start of the run.
+
+- **Not run:** the full suite. Per the 2026-09-16 standing call, CI's `checks` on the pushed head
+  is the wider check.
+## 2026-10-13 — teammate 1
+
+**V4 is withdrawn, and the public-release line is true for the first time.** Two §8 lines, in
+opposite directions, both the record catching up with what is actually so.
+
+**V4 — the arrival.** The maintainer, asked what should happen to the fly-in animation now that the
+app is published: *"we dont need that animation u can remove it of the plan."* That is **D18**,
+which has sat `open` since 2026-09-17 with three rounds of argument and a reviewer's signature
+behind it, proposing exactly this. So it is recorded as taken rather than enacted by deleting a
+line: the line is marked `[-]`, withdrawn, with no command, which is what D18 proposed in
+September. A withdrawn outcome that leaves no trace is indistinguishable from one nobody thought
+of, and the argument above it is the reason this one is not worth building — since D14 there is no
+building, at a first launch nothing is running, and the one view it could show honestly is every
+office idle.
+
+**The public release.** Untickied on 2026-10-01 because `gh release list | grep -q .` exits 0
+inside a private repository, so it could not fail for the reason its sentence is about. It is
+ticked again because the sentence is now true, and because the command finally asks what the
+sentence claims — unauthenticated, from outside, for the bytes:
+
+```
+curl -sfL -o /dev/null -r 0-0 \
+  https://github.com/slug-labz/office-space-app/releases/download/v0.1.0/Office.Space-0.1.0-arm64.dmg
+```
+
+`Evidence:` the command and both of its controls, measured before it was written into the line.
+
+```
+the real asset, public repo                exit 0    a stranger can fetch bytes
+a tag that does not exist                  exit 22   the check can say no
+the same shape against the PRIVATE repo    exit 22   privacy is exactly what it detects
+no ~/.netrc on this machine, so curl carries no credential of ours
+```
+
+The second control is the one that matters: the old check could not tell a private repository from
+a public one, and this one exits 22 against the repository that is still private. Pulse's parser
+reads it as the line's VERIFY — its regex is end-anchored, so the command sits last — and V4's
+withdrawn line yields `cmd=null`, which is what a line with no command should yield.
+
+**TASKS row 49 is narrowed, not closed.** It bundled three questions: withdraw V4, was the arrival
+ever for the pitch, and does `scripts/boot-time.mjs` stay. One was answered. Marking the row done
+would claim the other two were, which is the shape of claim this file exists to refuse.
+
+`a-ticked-line-names-files-that-exist` 9/9, `tasks` 94/94.

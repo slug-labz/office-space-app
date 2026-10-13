@@ -94,7 +94,7 @@ export function digest(bytes: Buffer | string): string {
 
 /** One candidate found at a source. */
 export interface Offered {
-  /** Source-relative path, e.g. `agents/ariel-review.md`. */
+  /** Source-relative path, e.g. `agents/wren-review.md`. */
   readonly file: string
   /** The id it would be hired under: the frontmatter `name`, or the file's stem. */
   readonly id: string
