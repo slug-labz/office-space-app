@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The renderer is a browser. This config emits it alongside the main process, so it needs
+    // both libraries — the narrower `tsconfig.json` is what keeps main-process code honest.
+    "lib": ["ES2023", "DOM"],
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/preload/**"]
+}

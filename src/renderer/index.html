@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No remote anything, no inline script, no eval. The transcript renders model output and
+      tool results — untrusted text — so if markup ever reaches the DOM this is what keeps it
+      inert. Duplicated as a response header in main.ts; both are cheap.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'"
+    />
+    <title>Office Space</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!--
+      Laptop 1's stylesheet, per the boundary agreed on the planning branch: styles.css has one
+      author. Loaded second so it can compose what that file declares, and it declares no
+      colours of its own.
+    -->
+    <link rel="stylesheet" href="panels.css" />
+  </head>
+  <body>
+    <main class="building" id="building" tabindex="-1">
+      <!-- The floor. Everything in here is drawn, not marked up. -->
+      <section class="floor" aria-label="The office floor">
+        <!--
+          The wordmark, and nothing else.
+
+          The workspace path used to sit beside it. It is a developer's answer to a question
+          nobody asks twice — you know which directory you opened — and it was the longest string
+          on screen, in the corner the eye lands on first. It has not been deleted: the privacy
+          panel shows the root, which is where somebody asking "what is this app pointed at"
+          actually goes.
+        -->
+        <header class="floor__chrome">
+          <h1 class="wordmark">Office<span>Space</span></h1>
+          <!--
+            Zoom out to the campus. Every project at once, side by side.
+
+            In the header row rather than floating over the canvas. It was absolutely positioned
+            three-quarters of a rem from the top and a rem from the right, which put it *over* the
+            office at no fixed relationship to anything — and meant it needed a translucent ground
+            of its own so the room did not show through the label. In the row it sits in the same
+            line as the wordmark, opposite it, which is where a view switch goes.
+          -->
+          <button id="view-toggle" class="viewtoggle" type="button" aria-pressed="false">
+            all offices
+          </button>
+        </header>
+
+        <div class="stage" id="stage">
+          <!--
+            The floor is the product, and to a screen reader it was an unnamed `Canvas` node.
+            Measured over CDP: `ignored=false, role=Canvas, name=""` — present in the
+            accessibility tree, announced, and saying nothing about itself.
+
+            `role="img"` rather than something interactive, because that is the honest account of
+            what this offers here: clicking a desk asks that person a question, and there is no
+            keyboard route to it. The roster is that route, and it is a real one — the same
+            people, the same states, as text, with the same actions on them. So the label says
+            what the picture is and where the same thing exists in words.
+
+            The avatars inside the roster are the opposite case and were already right:
+            `views/avatar.ts` sets `aria-hidden` on each, because every one of them sits beside
+            the name it draws. A portrait announced next to the name it depicts is noise.
+          -->
+          <canvas
+            id="floor-canvas"
+            role="img"
+            aria-label="The office floor, drawn: everyone who works here, at their desk, and what they are doing. The roster lists the same people and the same states as text."
+          ></canvas>
+        </div>
+
+        <!--
+          The activity strip. Three zones, and the order is the design: what needs you, what is
+          running, what happened. Collapsed to one bar by default so it never steals the floor —
+          and it opens itself the moment a tool call is held, because a rendezvous nobody can
+          see is a hang.
+        -->
+        <section class="strip" id="strip" aria-label="Activity">
+          <button class="strip__bar mono" id="strip-toggle" type="button" aria-expanded="false">
+            <span id="strip-summary"></span>
+          </button>
+          <div class="strip__zones" id="strip-zones" hidden></div>
+          <!--
+            The music controller. In the strip because the strip is already the surface that
+            answers "what is happening right now", and what is playing is part of that.
+            Populated entirely with textContent and one data: URI for the album art.
+          -->
+          <div class="music" id="music" hidden></div>
+        </section>
+
+        <!--
+          The status bar, and it has two halves that were one.
+
+          Measured on `dev`: seven pills, all the same shape and weight, and they were **six
+          different kinds of thing** — a status readout, an attribution, a keyboard hint, three
+          panel actions, and an alert. Dressing six kinds as one is not consistency; it is the
+          row refusing to say which of its items you can *press* and which are just true.
+
+          So: what is true on the left, what you can do on the right, and the one thing that
+          needs you keeps the only emphasis in the row.
+        -->
+        <footer class="floor__status">
+          <!--
+            Readouts. Still clickable — the staff count is the sentence somebody is already
+            reading when they wonder who they are — but they no longer wear a control's box,
+            because their job is to be true rather than to be pressed.
+          -->
+          <div class="floor__facts">
+            <button class="fact" id="staff-count" type="button" title="Who works here, and what they know"></button>
+            <!--
+              The credit rides with the theme name, because nearly every licence that permits
+              commercial use requires attribution wherever the art is named. It is a fact about
+              what you are looking at, not an action, and it spent this whole round in the
+              action group looking like one.
+            -->
+            <button class="fact" id="theme-name" type="button"></button>
+          </div>
+
+          <!--
+            What this workspace still needs — one line, and one surface behind it.
+
+            The only emphasised item in the row, and it is hidden unless there is something to
+            say. An alert that is always on screen is not an alert.
+          -->
+          <button class="pill" id="getting-started" type="button" data-tone="warn" hidden></button>
+
+          <!-- Actions. Three panels and the way to everything else. -->
+          <div class="floor__actions">
+            <!-- What this project says has to be true, and whether it is. A view of the
+                 project, so it belongs with the other panels rather than with the dials that
+                 describe one message. -->
+            <button class="pill" id="tasks" type="button" title="What this project says has to be true, and whether it is">tasks</button>
+            <!--
+              Settings, music and privacy, behind one control.
+
+              All three were pills of their own, and all three are also in the palette — so the
+              row was five permanent buttons duplicating a menu that already held them. Said
+              twice: the UI is overburdened and carries too many repetitions.
+
+              `tasks` stays out here because it is about the work; these three are about the
+              app, and an app's own settings do not deserve standing room on a floor whose
+              subject is somebody else's project. One click away, still discoverable, and the
+              row goes from five to three.
+            -->
+            <div class="more" id="more">
+              <button class="pill" id="more-open" type="button" aria-haspopup="menu" aria-expanded="false"
+                      title="Settings, music, and what leaves this machine">···</button>
+              <div class="popmenu" id="more-menu" role="menu" hidden></div>
+            </div>
+            <!--
+              The command palette, discoverable. A keyboard feature nobody can find is not
+              "reachable with the keyboard" in any sense that helps a person — so the shortcut is
+              printed where the other controls are, and the label is also the button.
+            -->
+            <button class="pill" data-tone="quiet" id="palette-open" type="button" title="Everything this app can do"></button>
+          </div>
+        </footer>
+      </section>
+
+      <!-- The window you are looking through. -->
+      <section class="pane" aria-label="Chat with the manager">
+        <!--
+          The switcher: one control where three used to be.
+
+          It replaces the horizontal tab strip, the 254 x 12.5px session button that used to sit
+          in the header below, and the drawer that button opened. Settled against a mock of both
+          readings: no tabs for the project, because a tab strip is hard to control.
+
+          A tab strip is not a bad list — it is not a list at all. No second line, no room for
+          state, nothing to manage, and it runs out of width at about four projects. This app had
+          four and was already full.
+        -->
+
+        <header class="pane__head">
+          <!--
+            Where you are, and the way to somewhere new — one box, two segments. S1 begins here.
+
+            Reported after going to look for it and failing: new projects could not be made at
+            all. Both halves of that are markup problems. The trigger was a borderless line of
+            text with a caret flung to the far end of a full-width button, which is a **window
+            title**, and nobody opens a window title; and `new` lived only inside the list it
+            opens, plus ⌘K. So the way to start anything was behind a control that did not say it
+            was one.
+
+            The pair is the `.mic__pair` idiom already in this app: two buttons sharing one
+            outline, a wide one that does the everyday thing and a narrow one that opens the rest.
+            It is deliberately **not** a second pill. It has twice been said that the UI carries
+            too many buttons and too many repetitions, and the answer the floor's `···` and the
+            composer's `model` already settled on is a collapse menu, not another permanent
+            control. The row gains one 32×32 segment welded to a control that was already there.
+
+            `+ new conversation` stays at the bottom of the list as well. That is not a
+            repetition to remove: one is where you land when you are already choosing where to
+            go, the other is for when you are not.
+          -->
+          <div class="where">
+            <div class="where__pair">
+              <button class="switcher" id="switcher" type="button" aria-expanded="false" aria-controls="switcher-list"></button>
+              <button class="switcher__new" id="new-open" type="button" aria-haspopup="menu" aria-expanded="false"
+                      aria-controls="new-menu" aria-label="Start something new"
+                      title="Start a new conversation, or a new project">+</button>
+            </div>
+            <!--
+              A sibling of the two segments, never a child.
+
+              `.popmenu` was written for the floor's `···` and the composer's `model`, which both
+              sit on the **bottom** edge of the window and both hang off the **right** — so it
+              opens upward from `right: 0`. This opener is at the top-left of the pane, where
+              both of those defaults are wrong, and the second one has already cost this project
+              a real bug: the composer's menu inherited `right: 0` and drew its left edge at
+              -169px, open and entirely off the side of the window. Hence both modifiers, and a
+              test that says why.
+
+              And a sibling of the pair rather than a child of it, for the reason the microphone
+              writes down beside its own menu: the pair clips, because that is how two welded
+              buttons get rounded outer corners without either naming a corner-pair the design
+              system does not allow. A box that clips its children cannot also let one of them
+              out.
+            -->
+            <div class="popmenu popmenu--left popmenu--down" id="new-menu" role="menu" hidden></div>
+          </div>
+          <!-- S1 ends here. -->
+          <div class="pane__who-line">
+            <span class="dot" id="phase-dot" data-phase="idle"></span>
+            <h2 class="pane__who" id="manager-name">—</h2>
+            <span class="mono pane__phase" id="phase-text">idle</span>
+          </div>
+          <!--
+            The list hangs off the header rather than sitting in the pane's grid.
+
+            It was a grid item at `grid-row: 2`, which fought auto-placement: the header took row
+            1, the list was forced to row 2, and the transcript and composer pushed into rows 3
+            and 4 against a three-track template — so an implicit track appeared, row 1 collapsed
+            to 0px, and the list drew itself over the header it had just been opened from.
+
+            Inside the header and `top: 100%`, it hangs directly below whatever height that
+            header happens to be, which is what a dropdown is. Two levels: the projects, then the
+            conversations inside the one you are in. `+ new conversation` lives at the bottom of
+            the list rather than in the header, which is Khalid's — it means `new` never competes
+            for space with the thing that says where you are.
+          -->
+          <nav class="swlist" id="switcher-list" aria-label="Projects and conversations" hidden></nav>
+        </header>
+
+
+        <!--
+          A transcript per project, created on demand. Only the active one is shown. Keeping
+          them rather than re-rendering means switching tabs does not re-read a session from
+          disk, and a conversation you scrolled back through stays where you left it.
+        -->
+        <div class="transcripts" id="transcripts"></div>
+
+        <footer class="composer">
+          <!--
+            The slash menu. Sits above the textarea so it does not cover what you are typing,
+            and is populated entirely with textContent.
+          -->
+          <div class="slash" id="slash" role="listbox" aria-label="Commands and skills" hidden></div>
+          <!--
+            A real textarea, and it has to stay one. System-wide dictation types into whatever
+            field has focus; a contenteditable div or a keydown-intercepting component breaks
+            every dictation tool on the system and nothing looks broken until someone talks.
+            See docs/voice.md.
+          -->
+          <textarea
+            id="composer"
+            rows="1"
+            placeholder="Ask the manager for something…"
+            aria-label="Message the manager"
+            spellcheck="true"
+          ></textarea>
+          <!--
+            The dials sit against the input, not in the header. They belong to the message you
+            are about to send — model, effort and what it may do without asking are all
+            decisions about *this* turn, and putting them at the top of the panel made them
+            look like properties of the panel instead. Same reasoning, and the same placement,
+            as the tool this is a window onto.
+
+            Native selects rather than a custom menu: keyboard-navigable, screen-reader-legible
+            and correctly placed on every platform for free, and none of that is worth
+            reimplementing to gain a chevron.
+          -->
+          <!--
+            What this conversation may do right now, and the control that moves it on.
+
+            Above the composer because a mode is about what happens *next*, and the composer is
+            where next happens — and because the control that ends intake belongs beside the
+            thing you are typing to end it with. It is the only new control in this round that a
+            person has to find without being told, which is why it is a sentence rather than a
+            chevron in a corner.
+
+            Hidden in `building`. That is the resting state, and a banner that is always on
+            screen is furniture — it stops being read within a day, and the two modes that do
+            need saying would inherit that indifference.
+          -->
+          <div class="mode" id="mode" hidden>
+            <p class="mode__text">
+              <span class="mode__lede" id="mode-lede"></span>
+              <span class="mode__detail" id="mode-detail"></span>
+            </p>
+            <div class="mode__controls">
+              <!--
+                The way back, before the way on. A mode you can only move forward through is a
+                mode the person does not actually own, which is the one thing this feature is
+                for. Quiet, because going back is the rarer choice — not because it is a lesser
+                one.
+              -->
+              <button class="mode__back" id="mode-back" type="button" hidden></button>
+              <button class="mode__go" id="mode-go" type="button"></button>
+            </div>
+          </div>
+
+          <!--
+            One row, not two.
+
+            It was two: the dials, then a second line carrying only the cost and Send. That put
+            two rows of chrome under a one-line textarea, and the second was mostly empty.
+
+            `tasks` left this row entirely, and the reason is what the row is *for*. Everything
+            here is a property of **the message you are about to send** — which model answers,
+            how hard it thinks, what it may do without asking. The task panel is a view of the
+            project, true whether or not you ever press Send, and it sat between the dials and
+            the voice switch looking like a third dial. It is with the other panels now.
+          -->
+          <div class="composer__row">
+            <!--
+              Ours, not the operating system's. A native <option> is one line of text, which is
+              why this list used to read `acceptEdits` — a flag name, on the control that decides
+              whether an agent may write to your repository without asking. Each row now carries
+              the sentence that says what it does. See views/select.ts.
+            -->
+            <!--
+              Model and effort, behind one control that says what they are set to.
+
+              Model and effort were to move into the menu too. Not the floor's `···` though —
+              that one holds theme, music and privacy, which are about the *app*. These two are
+              about *this conversation's next message*, and reaching across the window to the
+              status bar to change the model would put a per-message control in the app's
+              drawer. Same collapse, its own drawer.
+
+              The trigger reads `sonnet · high` when either is set and `model` when neither is,
+              so what is hidden is still legible at rest — which is the whole difference between
+              collapsing a control and losing it.
+
+              `accept edits` stays out here on purpose. It governs whether an agent may write to
+              your files without asking; you should be able to see what the office is allowed to
+              do without opening anything.
+            -->
+            <div class="dials" id="dials">
+              <button class="pill" id="dials-open" type="button" aria-haspopup="menu" aria-expanded="false"
+                      title="Which model, and how hard it thinks">model</button>
+              <div class="popmenu popmenu--wide popmenu--left" id="dials-menu" hidden>
+                <div id="model" class="dial"></div>
+                <div id="effort" class="dial"></div>
+              </div>
+            </div>
+            <div id="permission" class="dial"></div>
+            <!--
+              The right-hand group, and it is a group so that it wraps as one.
+
+              At 430px the dials, the voice switch and Send do not always fit on one line — and
+              they must not, because `model` can read `opus` or `claude-sonnet-4-5` depending on
+              the workspace, so any single-row layout that fits today is one rename from not
+              fitting. What has to hold at every width is that Send is the rightmost thing and
+              the hints sit beside it, which a group with `margin-left: auto` does and five
+              siblings each fending for themselves do not.
+            -->
+            <div class="composer__right">
+              <!-- What you typed while the office was busy. Accepted, waiting, and visible —
+                   a message the office took and shows nowhere is worse than one it refused. -->
+              <span class="hint mono" id="queued" hidden></span>
+              <span class="hint mono" id="cost"></span>
+              
+              <!--
+                Dictation. It types into the composer and never sends — speech recognition is
+                wrong often enough that a mic which sent for you is a mic nobody dares press.
+
+                An icon and a chevron, not the word "Speak". The row was already carrying more
+                buttons than were wanted; a glyph everybody already reads as "microphone" costs
+                a third of the width of the word for it. The chevron is there because the first
+                thing that goes wrong with dictation is the wrong input device being selected by
+                the system, and a person cannot fix what the app will not show them.
+              -->
+              <div class="mic">
+                <div class="mic__pair">
+                <button id="mic" type="button" class="mic__btn" data-state="idle" aria-label="Dictate into the composer">
+                  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+                    <path d="M8 1.6a2 2 0 0 0-2 2v4.2a2 2 0 1 0 4 0V3.6a2 2 0 0 0-2-2Z" fill="currentColor"/>
+                    <path d="M3.6 7.2v.7a4.4 4.4 0 0 0 8.8 0v-.7M8 12.3v2.1M5.6 14.4h4.8"
+                          fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                  </svg>
+                  <span class="mic__level" aria-hidden="true"></span>
+                </button>
+                <button id="mic-pick" type="button" class="mic__pick" aria-label="Choose which microphone" aria-haspopup="menu" aria-expanded="false">
+                  <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" focusable="false">
+                    <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                </div>
+                <div class="popmenu" id="mic-menu" role="menu" hidden></div>
+              </div>
+              <button id="stop" type="button" class="ghost" hidden>Stop</button>
+              <button id="send" type="button">Send</button>
+            </div>
+          </div>
+        </footer>
+
+      </section>
+    </main>
+
+    <!--
+      The scrim.
+
+      The panels below float over both the transcript and the office with nothing behind them, so
+      you read the app through the gaps and it is never quite clear whether you are in a panel or
+      beside one. That ambiguity is most of why a card of real content read as unfinished.
+
+      One backdrop for all of them, and it is a click target: clicking away from a panel is what
+      everybody tries first. Not used by the music, which lives in the activity strip under the
+      floor and overlaps nothing — a scrim there would dim a room you can still see.
+    -->
+    <div class="scrim" id="scrim" hidden></div>
+
+    <!--
+      The harness. What this project says has to be true, and whether it is — read from
+      TASKS.md, checked with the commands the workspace already permits.
+    -->
+    <aside class="card card--tasks" id="task-panel" hidden role="dialog" aria-modal="true" aria-labelledby="task-label task-project">
+      <button class="card__close" id="task-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="task-label">Verified, not believed</p>
+      <h3 id="task-project"></h3>
+      <p class="card__desc" id="task-note"></p>
+      <div class="tasks__list" id="task-list"></div>
+      <div class="card__ask">
+        <button id="task-run-all" type="button">Check everything allowed</button>
+      </div>
+    </aside>
+
+    <!--
+      The roster. Who works here, who has been sent home, and what is on the shelf — the surface
+      for the hire/fire/bench and skill mechanisms, which had no caller in the renderer until it
+      existed. Populated entirely with textContent.
+    -->
+    <aside class="card card--roster" id="roster-panel" hidden role="dialog" aria-modal="true" aria-labelledby="roster-label">
+      <button class="card__close" id="roster-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="roster-label">The staff, and what they know</p>
+      <h3 id="roster-root" class="mono"></h3>
+      <p class="card__desc" id="roster-problem" hidden></p>
+      <div class="roster" id="roster-body"></div>
+    </aside>
+
+    <!--
+      The privacy panel. Every egress, every stored file, one delete each — and the exact text of
+      the last prompt sent, office-added blocks and all, which is the largest thing this app
+      sends and was the one nobody could see. Populated entirely with textContent.
+    -->
+    <!--
+      What the office remembers. The memory-keeper writes `memory/`, one fact per file; this is
+      the first thing in the app that reads it. Every silence in here is labelled — nothing
+      recorded, could not be read, and could not look are three different sentences.
+    -->
+    <aside class="card card--roster" id="memory-panel" hidden role="dialog" aria-modal="true" aria-labelledby="memory-label">
+      <button class="card__close" id="memory-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="memory-label">What the office remembers</p>
+      <div class="roster" id="memory-body"></div>
+    </aside>
+
+    <!--
+      What the office decided while you were out. The gate files every answered request under
+      `.office-space/approvals/decided/`; this is the door onto it. A panel rather than a line on
+      the problems list, because "what did I approve last night" is not a problem report and
+      putting the only answer to it inside one would make it reachable only when something also
+      went wrong.
+    -->
+    <aside class="card card--roster" id="decided-panel" hidden role="dialog" aria-modal="true" aria-labelledby="decided-label">
+      <button class="card__close" id="decided-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="decided-label">What the office did while you were out</p>
+      <div class="roster" id="decided-body"></div>
+    </aside>
+
+    <aside class="card card--roster" id="changed-panel" hidden role="dialog" aria-modal="true" aria-labelledby="changed-label">
+      <button class="card__close" id="changed-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="changed-label">What the office changed</p>
+      <div class="roster" id="changed-body"></div>
+    </aside>
+
+    <!--
+      Search. Its own panel rather than a mode of the palette: the palette answers "what can this
+      app do", and this answers "what is in my workspace", which is a different question with
+      different results.
+    -->
+    <aside class="card card--roster" id="search-panel" hidden role="dialog" aria-modal="true" aria-labelledby="search-label">
+      <button class="card__close" id="search-close" type="button" aria-label="Close">&times;</button>
+      <p class="label" id="search-label">Find anything here</p>
+      <input class="find__input" id="search-input" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Search memory, projects, dispatches and conversations" aria-labelledby="search-label">
+      <div class="roster" id="search-body"></div>
+    </aside>
+
+    <aside class="card card--roster" id="plan-panel" hidden role="dialog" aria-modal="true" aria-labelledby="plan-label">
+      <button class="card__close" id="plan-close" type="button" aria-label="Close">&times;</button>
+      <p class="label" id="plan-label">How full the plan is</p>
+      <p class="card__desc">
+        What Claude Code reports about this plan&rsquo;s allowance &mdash; a bucket that empties and
+        refills. It is measured on the first event of a run, so the newest reading available is
+        always the last run&rsquo;s.
+      </p>
+      <div class="roster" id="plan-body"></div>
+    </aside>
+
+    <aside class="card card--roster" id="hooks-panel" hidden role="dialog" aria-modal="true" aria-labelledby="hooks-label">
+      <button class="card__close" id="hooks-close" type="button" aria-label="Close">&times;</button>
+      <p class="label" id="hooks-label">What runs on a hook</p>
+      <p class="card__desc">
+        Hooks are Claude Code&rsquo;s own. A hook is a command a settings file registers against an
+        event &mdash; it runs for every session in this workspace, including a plain terminal
+        <code>claude</code> that has never heard of this app. A file in <code>.claude/hooks/</code>
+        that nothing registers never runs.
+      </p>
+      <div class="roster" id="hooks-body"></div>
+    </aside>
+
+    <aside class="card card--roster" id="connect-panel" hidden role="dialog" aria-modal="true" aria-labelledby="connect-label">
+      <button class="card__close" id="connect-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="connect-label">Services the office can reach</p>
+      <p class="card__desc">
+        Connectors are Claude Code’s own. Adding one here writes it into <code>.mcp.json</code> —
+        it is not a login, nothing is started, and Claude Code asks you to approve a new server
+        the first time it sees one.
+      </p>
+      <div class="roster" id="connect-body"></div>
+      <form class="conn__form" id="connect-form">
+        <p class="maintained__group">Add a service</p>
+        <label class="maintained__field">
+          <span>Name</span>
+          <input id="connect-name" type="text" autocomplete="off" spellcheck="false" placeholder="slack" />
+        </label>
+        <label class="maintained__field">
+          <span>How it is reached</span>
+          <select id="connect-transport">
+            <option value="stdio">a command on this machine</option>
+            <option value="http">http</option>
+            <option value="sse">sse</option>
+          </select>
+        </label>
+        <label class="maintained__field" id="connect-command-field">
+          <span>Command and arguments</span>
+          <input id="connect-command" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="npx -y @modelcontextprotocol/server-slack" />
+        </label>
+        <label class="maintained__field" id="connect-url-field" hidden>
+          <span>URL</span>
+          <input id="connect-url" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="https://mcp.example.com/mcp" />
+        </label>
+        <label class="maintained__field">
+          <span>Environment variables to pass through</span>
+          <input id="connect-env" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="SLACK_BOT_TOKEN, SLACK_TEAM_ID" />
+          <small class="conn__hint">Names only. The office writes <code>${NAME}</code> and never the value.</small>
+        </label>
+        <label class="maintained__field">
+          <span>Headers</span>
+          <input id="connect-headers" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Authorization=NOTION_AUTH" />
+          <small class="conn__hint">Header=VARIABLE. The variable holds the whole value, including any “Bearer ”.</small>
+        </label>
+        <button class="btn" id="connect-add" type="submit">Write it into .mcp.json</button>
+      </form>
+    </aside>
+
+    <aside class="card card--roster" id="maintained-panel" hidden role="dialog" aria-modal="true" aria-labelledby="maintained-label">
+      <button class="card__close" id="maintained-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="maintained-label">Employees somebody else maintains</p>
+      <p class="card__desc">
+        An employee kept in somebody else’s repository stays theirs. The office records where each
+        one came from, so it can tell you whether the copy here is still the file they wrote.
+      </p>
+      <form class="maintained__find" id="maintained-find">
+        <label class="maintained__field">
+          <span>Where they are kept</span>
+          <input id="maintained-at" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="https://github.com/company/agents.git" />
+        </label>
+        <label class="maintained__field">
+          <span>Which kind</span>
+          <select id="maintained-kind">
+            <option value="git">a repository to clone</option>
+            <option value="directory">a directory on this machine</option>
+          </select>
+        </label>
+        <button class="btn" id="maintained-look" type="submit">Look</button>
+      </form>
+      <div class="roster" id="maintained-offered"></div>
+      <div class="maintained__bar">
+        <button class="btn" id="maintained-check" type="button">Check every source</button>
+      </div>
+      <div class="roster" id="maintained-body"></div>
+    </aside>
+
+    <aside class="card card--roster" id="privacy-panel" hidden role="dialog" aria-modal="true" aria-labelledby="privacy-label">
+      <button class="card__close" id="privacy-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="privacy-label">What leaves, and what is kept</p>
+      <h3 id="privacy-root" class="mono"></h3>
+      <p class="card__desc" id="privacy-problem" hidden></p>
+      <div class="roster" id="privacy-body"></div>
+    </aside>
+
+    <!--
+      What a stranger sees the first time. An office that is empty for a reason nobody states is
+      the failure this exists to prevent — no claude on the PATH, no agents, an untrusted
+      workspace: all three draw as a room with desks and nobody at them, and all three look
+      exactly like a broken app.
+    -->
+    <aside class="card card--roster" id="firstrun-panel" hidden role="dialog" aria-modal="true" aria-labelledby="firstrun-label firstrun-head">
+      <button class="card__close" id="firstrun-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="firstrun-label">Getting started</p>
+      <h3 id="firstrun-head"></h3>
+      <div class="roster" id="firstrun-body"></div>
+    </aside>
+
+    <!-- Theme, density, pane side, text size. Stored on this machine, not in the workspace. -->
+    <aside class="card card--roster" id="settings-panel" hidden role="dialog" aria-modal="true" aria-labelledby="settings-label settings-head">
+      <button class="card__close" id="settings-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="settings-label">How you like it</p>
+      <h3 id="settings-head">Settings</h3>
+      <p class="card__desc">Stored on this machine. None of these is a fact about your project, so none of them travels with it.</p>
+      <div class="roster" id="settings-body"></div>
+    </aside>
+
+    <!--
+      The command palette for the app itself. Not the slash menu: nothing here reaches Claude or
+      costs anything. It is what makes "reachable with the keyboard" true for a panel the moment
+      the panel is registered, rather than a promise somebody has to re-audit.
+    -->
+    <div class="apal" id="app-palette" hidden>
+      <div class="apal__box" role="dialog" aria-modal="true" aria-label="What do you want to do?">
+        <input
+          id="app-palette-input"
+          class="apal__input mono"
+          type="text"
+          placeholder="What do you want to do?"
+          aria-label="Search actions"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="apal__list" id="app-palette-list" role="listbox" aria-label="Actions"></div>
+      </div>
+    </div>
+
+    <!-- Click someone on the floor. Populated entirely with textContent. -->
+    <aside class="card" id="card" hidden role="dialog" aria-modal="true" aria-labelledby="card-role card-name">
+      <button class="card__close" id="card-close" type="button" aria-label="Close">×</button>
+      <p class="label" id="card-role"></p>
+      <h3 id="card-name"></h3>
+      <p class="card__desc" id="card-desc"></p>
+      <p class="card__doing mono" id="card-doing"></p>
+      <p class="card__doing-trace mono" id="card-doing-trace" hidden></p>
+      <div class="card__bubble" id="card-bubble" hidden></div>
+      <div class="card__ask">
+        <input id="card-input" type="text" placeholder="Ask them something…" aria-label="Ask this agent a question" />
+        <button id="card-send" type="button">Ask</button>
+      </div>
+      <p class="card__note">
+        Asked on a fork of the session, so it never enters the conversation it is asking about —
+        and it is answered by the manager, who cannot see inside somebody while they work.
+      </p>
+
+      <!--
+        The way in to a real conversation with this person.
+
+        Everything above asks the *manager* about them: `askAbout` forks the manager's session,
+        and the prompt it sends says outright "You cannot see inside a subagent while it runs".
+        So the answer to "what did you actually find?" has always been a recollection.
+
+        This opens their own conversation instead — resumable, separate, and never entering the
+        manager's. They can read, search and look; they cannot dispatch anybody or change your
+        files, because standing order 1 says only you and the manager originate work.
+      -->
+      <div class="card__ask">
+        <button class="card__talk" id="card-talk" type="button">Talk to them directly</button>
+      </div>
+      <p class="card__note">
+        Their own conversation. They can read and search to answer you; they cannot dispatch
+        anyone or change files.
+      </p>
+
+      <!--
+        What they actually did, read from their own record rather than from the manager's
+        account of it. Populated entirely with textContent.
+      -->
+      <section class="card__work" id="card-work" hidden>
+        <h4 class="label" id="card-work-head">What they did</h4>
+        <p class="card__brief mono" id="card-brief"></p>
+        <div class="card__log" id="card-log"></div>
+      </section>
+    </aside>
+
+    <!--
+      What just happened.
+
+      Hiring somebody, writing a skill and deleting a store all succeeded in silence: the panel
+      redrew and nothing said the write had landed. A person who has just clicked "Fire" on an
+      employee deserves better than inferring it from a list one row shorter.
+
+      At body level, not inside the pane. The first version lived in the conversation panel and
+      was invisible behind the very card whose button had just been pressed — a message about a
+      modal action has to outrank the modal. Announced to assistive tech too, which is why it is
+      a live region rather than a paragraph somebody has to notice.
+    -->
+    <p class="said mono" id="said" role="status" aria-live="polite" data-shown="false"></p>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

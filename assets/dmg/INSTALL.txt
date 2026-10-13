@@ -1,0 +1,74 @@
+Office Space — how to install it, and the one bit of friction
+==============================================================
+
+1. Drag Office Space onto the Applications folder in this window.
+
+
+2. Open it. The first time, macOS will very likely refuse. You will get one
+   of these two messages, depending on which Mac you have:
+
+       "Office Space" is damaged and can't be opened.
+       You should move it to the Trash.
+                                            — Apple Silicon (M1 and later)
+
+       "Office Space" can't be opened because it is from an
+       unidentified developer.
+                                            — Intel
+
+   The app is not damaged and nothing went wrong with your download.
+
+   macOS flags everything that arrives through a browser, and it lifts that
+   flag by itself only for apps signed by Apple. Signing means an Apple
+   Developer membership at $99 a year. This project has not bought one, so
+   the app arrives unsigned and macOS says the most alarming thing it knows
+   how to say about it.
+
+   That is the whole story. It is a missing receipt, not a virus warning.
+
+
+3. Clear the flag once. Either of these works, and you only ever do it once.
+
+   THE EASY WAY
+
+       Right-click "Fix permissions.command" in this window, and choose Open.
+
+       Right-click, not double-click. Double-clicking gets you the same
+       refusal — the script is unsigned too. Right-click and Open gets you a
+       dialog with an Open button on it, and that button is the point.
+
+       It prints what it found and what it changed, so you can see it did
+       exactly one thing.
+
+   THE TYPING WAY
+
+       Open Terminal (Applications > Utilities > Terminal), paste this line,
+       and press return:
+
+           xattr -cr "/Applications/Office Space.app"
+
+   Both do the same thing: remove the download flag from the copy you just
+   put in Applications. Nothing is installed, nothing goes over the network,
+   and nothing outside that one app is touched.
+
+   Then open Office Space normally. It will keep opening normally.
+
+
+One thing worth knowing
+-----------------------
+
+The usual advice for unsigned apps — right-click the app and choose Open —
+gets you past the "unidentified developer" message but NOT past the "damaged"
+one. If right-clicking the app did nothing for you, that is why, and step 3
+is the fix.
+
+
+Why we did not just buy the certificate
+---------------------------------------
+
+Because it would be the only thing in this project that costs money, and it
+buys a smoother first thirty seconds rather than a better app. It is one
+purchase away whenever it is worth it, and until then this page is us being
+straight with you about it instead of hoping you do not notice.
+
+Office Space spawns the `claude` you already have installed. There is no
+server, no account and no API key.

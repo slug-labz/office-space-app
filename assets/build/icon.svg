@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Office Space — the app icon. Source art. assets/build/icon.png is rendered from this file:
+
+      node_modules/.bin/electron scripts/render-icon.mjs
+
+  ## What it is
+
+  One office floor at night, seen through the app's own camera, with one lamp still on. Two
+  dark stations at the back wall, the manager's desk lit at the front, and somebody crossing
+  the open carpet towards it — which is the one thing this app does that nothing else does:
+  you watch the work happen. README.md: "the employee walks into the manager's office to take
+  the brief, goes back to their desk to work, and returns with the result."
+
+  The lamp is the subject rather than a detail. `NIGHT_SHIFT` — the palette the app opens with
+  — is documented in src/shared/palette.ts as "the office at night, which is what it has always
+  been", and `#e8b25e` is its one accent: `roles.accent`, and the colour props.ts calls the
+  desk lamp. So the icon's claim is the app's own: your office is working while you are not.
+
+  ## The camera is the app's, and it is not isometric
+
+  src/shared/floor/projection.ts: "axis-aligned oblique, seen from above ... Not isometric, and
+  the difference is the whole point." A room is a RECTANGLE; walls run parallel to the edges of
+  the screen; depth is `y` and nothing else. Its constants are TILE_W 32, TILE_D 22,
+  TILE_RISE 28, and everything here is those numbers at 5x — 160, 110, 140 — so this is the
+  same projection the floor is drawn with rather than a drawing of one. Tile (0,0)'s top-left
+  corner is at (112, 228); tile (i,j) spans x 112+160i, y 228+110j.
+
+  Every box is built the way props.ts builds one: a lid, a front, and a one-unit shaded edge on
+  the -x side, because the room's light comes from +x. A desk is its lid lit a step above
+  anything else in the room over an almost-black apron, with a hard-edged shadow on the carpet
+  under it — "the only thing that separates furniture from freight is the value gap between the
+  surface you put things on and the dark underneath it."
+
+  ## Every colour is derived, none is invented
+
+  The hues are NIGHT_SHIFT's, from src/shared/palette.ts. Every shade comes from the factors in
+  src/renderer/props.ts: TOP 1.25, SHADE 0.71, LID 1.45, UNDER 0.42, SHADOW 0.72, WEAVE 0.93.
+  So the carpet's weave is the carpet x 0.93, a desk's lid is its wood x 1.45 and its apron
+  x 0.42, and the shadow it drops is the carpet x 0.72. The cast's skin, hair, shirts, trousers
+  and shoes are picked from the lists in src/shared/character/recipe.ts and outlined in its
+  OUTLINE #14161a. The manager's desk is `room.deskWarm`, which is already the shade floor-view
+  draws that one desk in.
+
+  Three deliberate departures, each because an icon is not a running app:
+
+  1. **The carpet is lit.** It is `room.floor` x TOP — the same step every lid in the room
+     takes. A Dock icon is seen in one glance against unknown wallpaper, and at `room.floor`
+     itself the room read as a black square with a smudge in it. Measured at 16px before and
+     after.
+  2. **The light is a gradient.** Everything else is flat, as props.ts is ("there is no alpha
+     here"), but floor-view.ts's own `drawWindow` washes light with a `createLinearGradient`
+     that "falls off with distance". A lamp's falloff is radial rather than linear, and the
+     ellipse is squashed by TILE_D / TILE_W = 0.6875 so the pool lies on the floor plane.
+  3. **A desk's four legs are one apron.** At 32px the app draws them separately; here they
+     would be a third of a unit apart at the size this is actually looked at.
+
+  What is *not* a departure, though it looks like a mistake: **no screen is lit facing you.**
+  Every desk here faces south, and drawMonitor says what that costs — "at a desk whose occupant
+  faces the camera, the camera gets the back of the monitor. It cannot have both." So the lit
+  station shows its light the way the app shows it, as spill across the panel's lid.
+
+  ## Legibility
+
+  It is a Dock icon before it is a picture, so it comes apart in three stages: the lit room at
+  16px, the furniture at 32px, the staff at 128px and up. 1024 to 16 is a factor of 64, so
+  nothing under about 100 units here exists at the smallest size — which is why the lamp's pool
+  is large and the figures are not asked to carry anything.
+
+  macOS convention: the art sits inside a rounded square with a margin rather than filling the
+  square, and electron-builder masks nothing, so the margin has to be in the file. 100 units
+  all round, leaving an 824 tile at radius 184.
+
+  No text, no emoji, no gradient mesh.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- The carpet: a checkerboard in the arithmetic and a weave to the eye, which is exactly
+         what drawFloorTile does — `(tile.x + tile.y) % 2 === 0 ? base : tint(base, WEAVE)`.
+         Two tiles square, anchored on tile (0,0) so furniture lands on whole tiles. -->
+    <pattern id="carpet" patternUnits="userSpaceOnUse" x="112" y="228" width="320" height="220">
+      <rect x="0"   y="0"   width="160" height="110" fill="#3a354c"/>
+      <rect x="160" y="0"   width="160" height="110" fill="#363147"/>
+      <rect x="0"   y="110" width="160" height="110" fill="#363147"/>
+      <rect x="160" y="110" width="160" height="110" fill="#3a354c"/>
+    </pattern>
+
+    <!-- The lamp's pool, centred where the light lands and flattened onto the floor plane. -->
+    <radialGradient id="lamplight" gradientUnits="userSpaceOnUse"
+                    cx="471" cy="600" r="330" gradientTransform="matrix(1 0 0 0.6875 0 187.5)">
+      <stop offset="0"    stop-color="#e8b25e" stop-opacity="0.64"/>
+      <stop offset="0.38" stop-color="#e8b25e" stop-opacity="0.31"/>
+      <stop offset="1"    stop-color="#e8b25e" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The room, clipped to the tile less a 14-unit bezel of `ground[0]` — the app's own
+         window colour, so the icon carries the edge the app's panels carry. -->
+    <clipPath id="room">
+      <rect x="114" y="114" width="796" height="796" rx="170"/>
+    </clipPath>
+  </defs>
+
+  <!-- The silhouette. 824 at radius 184 inside a 100-unit margin, as macOS expects. -->
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#0b0e17"/>
+
+  <g clip-path="url(#room)">
+    <!-- The back wall: its top face catches the light and its front face does not, which is
+         what makes a wall read as standing rather than as a hole cut in the floor. -->
+    <rect x="114" y="114" width="796" height="38" fill="#22283c"/>
+    <rect x="114" y="152" width="796" height="76" fill="#1b2030"/>
+
+    <!-- The carpet, and the light lying on it. -->
+    <rect x="114" y="228" width="796" height="682" fill="url(#carpet)"/>
+    <rect x="114" y="228" width="796" height="682" fill="url(#lamplight)"/>
+
+    <!-- ─────────────── the back row: two stations, both screens off ───────────────
+         Painted far to near, which is the painter's sort projection.ts describes: with no
+         rotation, depth is `y` and nothing else. -->
+
+    <!-- station A, tile (1,2). Its occupant stands behind it, on tile (1,1). -->
+    <rect x="272" y="448" width="160" height="110" fill="#2a2637"/>
+    <g transform="translate(352 393)" stroke="#14161a" stroke-width="9" stroke-linejoin="round"
+       style="paint-order:stroke fill">
+      <!-- skin #d9a87c · hair #2e2019 · shirt #46647f · trousers #4a5364 · shoes #1e2024 -->
+      <rect x="-21" y="-50" width="16" height="40" fill="#4a5364"/>
+      <rect x="5"   y="-50" width="16" height="40" fill="#4a5364"/>
+      <rect x="-23" y="-12" width="19" height="12" fill="#1e2024"/>
+      <rect x="4"   y="-12" width="19" height="12" fill="#1e2024"/>
+      <rect x="-30" y="-98" width="60" height="50" rx="8" fill="#46647f"/>
+      <rect x="-24" y="-150" width="48" height="55" rx="15" fill="#d9a87c"/>
+      <path d="M-24 -132v-5a24 24 0 0 1 48 0v5z" fill="#2e2019"/>
+    </g>
+    <rect x="278" y="480" width="147" height="57" fill="#19151e"/>
+    <rect x="272" y="389" width="160" height="88" fill="#564a68"/>
+    <rect x="272" y="477" width="6"   height="13" fill="#2a2433"/>
+    <rect x="278" y="477" width="154" height="13" fill="#3b3348"/>
+    <rect x="357" y="452" width="48" height="8"  fill="#151a26"/>
+    <rect x="336" y="378" width="90" height="19" fill="#2e3954"/>
+    <rect x="336" y="397" width="90" height="45" fill="#151a26"/>
+
+    <!-- station B, tile (3,2). Its occupant stands on tile (3,1). -->
+    <rect x="592" y="448" width="160" height="110" fill="#2a2637"/>
+    <g transform="translate(672 393)" stroke="#14161a" stroke-width="9" stroke-linejoin="round"
+       style="paint-order:stroke fill">
+      <!-- skin #7d4f30 · hair #c9c6c0 · shirt #b0644a · trousers #5b5445 · shoes #2f231b -->
+      <rect x="-21" y="-50" width="16" height="40" fill="#5b5445"/>
+      <rect x="5"   y="-50" width="16" height="40" fill="#5b5445"/>
+      <rect x="-23" y="-12" width="19" height="12" fill="#2f231b"/>
+      <rect x="4"   y="-12" width="19" height="12" fill="#2f231b"/>
+      <rect x="-30" y="-98" width="60" height="50" rx="8" fill="#b0644a"/>
+      <rect x="-24" y="-150" width="48" height="55" rx="15" fill="#7d4f30"/>
+      <path d="M-24 -132v-5a24 24 0 0 1 48 0v5z" fill="#c9c6c0"/>
+    </g>
+    <rect x="598" y="480" width="147" height="57" fill="#19151e"/>
+    <rect x="592" y="389" width="160" height="88" fill="#564a68"/>
+    <rect x="592" y="477" width="6"   height="13" fill="#2a2433"/>
+    <rect x="598" y="477" width="154" height="13" fill="#3b3348"/>
+    <rect x="677" y="452" width="48" height="8"  fill="#151a26"/>
+    <rect x="656" y="378" width="90" height="19" fill="#2e3954"/>
+    <rect x="656" y="397" width="90" height="45" fill="#151a26"/>
+
+    <!-- ─────────────── the open floor: somebody crossing it ───────────────
+         The whole reason this app exists is that this is visible. Mid-stride, feet apart, on
+         open carpet, belonging to no desk and heading for the lit one.
+         skin #f3d9c0 · hair #a8412c · shirt #76866a · trousers #3d434e · shoes #1e2024 -->
+    <g transform="translate(720 690)" stroke="#14161a" stroke-width="9" stroke-linejoin="round"
+       style="paint-order:stroke fill">
+      <rect x="-29" y="-50" width="16" height="40" fill="#3d434e"/>
+      <rect x="13"  y="-50" width="16" height="40" fill="#3d434e"/>
+      <rect x="-32" y="-12" width="21" height="12" fill="#1e2024"/>
+      <rect x="11"  y="-12" width="21" height="12" fill="#1e2024"/>
+      <rect x="-30" y="-98" width="60" height="50" rx="8" fill="#76866a"/>
+      <rect x="-24" y="-150" width="48" height="55" rx="15" fill="#f3d9c0"/>
+      <path d="M-24 -132v-5a24 24 0 0 1 48 0v5z" fill="#a8412c"/>
+    </g>
+
+    <!-- ─────────────── the front station: the manager's desk, lamp on ───────────────
+         `room.deskWarm` #4a3a55, which floor-view already uses for the manager and nobody
+         else. Its lid carries the lamp, so the lid is mixed toward the accent rather than
+         merely tinted up from the wood. -->
+    <rect x="432" y="668" width="160" height="110" fill="#2a2637"/>
+    <g transform="translate(512 613)" stroke="#14161a" stroke-width="9" stroke-linejoin="round"
+       style="paint-order:stroke fill">
+      <!-- the manager. skin #e8c39d · hair #4a3323 · shirt #5a586d · trousers #554a58 -->
+      <rect x="-21" y="-50" width="16" height="40" fill="#554a58"/>
+      <rect x="5"   y="-50" width="16" height="40" fill="#554a58"/>
+      <rect x="-30" y="-98" width="60" height="50" rx="8" fill="#5a586d"/>
+      <rect x="-24" y="-150" width="48" height="55" rx="15" fill="#e8c39d"/>
+      <path d="M-24 -132v-5a24 24 0 0 1 48 0v5z" fill="#4a3323"/>
+    </g>
+    <rect x="438" y="700" width="147" height="57" fill="#1f1824"/>
+    <!-- the lamp stands on the lid, so its post is painted before the lid covers its foot -->
+    <rect x="462" y="556" width="11" height="68" fill="#35293c"/>
+    <rect x="432" y="609" width="160" height="88" fill="#b0886b"/>
+    <rect x="432" y="697" width="6"   height="13" fill="#35293c"/>
+    <rect x="438" y="697" width="154" height="13" fill="#4a3a55"/>
+    <!-- the lamp head: a shade, and the one thing in the frame at full accent -->
+    <path d="M430 586 L448 554 L494 554 L512 586 Z" fill="#e8b25e"/>
+    <rect x="445" y="546" width="52" height="11" rx="4" fill="#ffdf76"/>
+    <!-- the monitor. Its lid takes the spill, which is how a lit screen stays readable from
+         behind — `mix(lid, SCREEN_COLOUR.lit, 0.62)`, drawMonitor's own number. -->
+    <rect x="517" y="672" width="48" height="8"  fill="#151a26"/>
+    <rect x="496" y="598" width="90" height="19" fill="#556488"/>
+    <rect x="496" y="617" width="90" height="45" fill="#151a26"/>
+  </g>
+</svg>

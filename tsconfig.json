@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+
+    // Dead locals, dead imports, dead parameters. Cheap, and this repository had twelve of them
+    // — including a watcher handle whose own comment said it was "closed on quit so it cannot
+    // hold the process open", while nothing anywhere called close(); and a `naming` flag that a
+    // comment eleven lines away described as already deleted. Both are the same fault as the
+    // orphan hunts done by hand: something declared and unreachable from the place that needs
+    // it. The compiler answers this one for free.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  // The renderer is checked separately, by `tsconfig.renderer.json`, because it is the only
+  // part of the app that is a browser. Excluding it here means the DOM library stays out of
+  // this config — so main-process code that reaches for `document` fails to compile rather
+  // than failing at runtime.
+  //
+  // `*.dom.test.ts` is excluded for the same reason and no other: a test that drives a renderer
+  // is browser code, and it is picked up by the renderer config instead. The suffix is the rule
+  // rather than a list of filenames, so the next one somebody writes is covered by being named.
+  // Every other test stays here, without the DOM, which is what keeps the guard above real.
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["src/renderer/**", "test/**/*.dom.test.ts"]
+}

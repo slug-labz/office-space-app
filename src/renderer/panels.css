@@ -1,0 +1,3493 @@
+/*
+  Laptop 1's stylesheet.
+
+  Agreed on the planning branch (02-BOUNDARIES §3): `styles.css` has one author, and the chrome
+  the backend adds lives here instead, so two machines never edit a thousand-line stylesheet at
+  once. A second local stylesheet costs nothing — the CSP is `style-src 'self'`.
+
+  Two rules this file keeps:
+
+  1. **It never defines a colour.** Every value below comes from a token declared in
+     `styles.css`, which is the single source. This has gone wrong once already: an earlier
+     change used `--accent`, `--ink-dim`, `--warn` and `--frame-bright`, none of which exist,
+     and an undefined custom property resolves to *nothing* — so the element rendered unstyled
+     rather than wrong, which is far harder to spot in a screenshot.
+  2. **It composes what is already there** rather than re-deriving layout. Spacing and structure
+     are where two stylesheets drift long before colour is.
+*/
+
+/* ── A slash command in the transcript ──────────────────────────────────────────
+
+   Not speech. The CLI expands `/state` into a whole prompt nobody typed, so rendering one as a
+   line of dialogue attributes several hundred words to six characters. It gets the shape of an
+   instruction: monospace, quieter than a turn, and visibly a thing you invoked.               */
+
+.turn--command .turn__body {
+  padding: 0.45rem 0.7rem;
+  border-left: 2px solid var(--lamp);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--frame);
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.turn--command .turn__who {
+  color: var(--lamp-text);
+}
+
+.turn__command-name {
+  color: var(--lamp);
+  font-weight: 600;
+}
+
+.turn__command-args {
+  color: var(--slate);
+}
+
+
+/* ── The slash menu ─────────────────────────────────────────────────────────────
+
+   Above the composer rather than below it, because a menu that covers the text you are
+   typing makes you choose between reading your own message and reading the options.      */
+
+/* `[hidden]` is a user-agent rule setting `display: none`, and any author `display` beats it —
+   so this menu was `hidden` and laying out a 2px sliver above the composer at all times. Found
+   by laptop 2 auditing the same fault in their own panel; `test/hidden.test.ts` now catches the
+   whole class rather than either instance. */
+.slash[hidden] { display: none; }
+
+.slash {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  /*
+     `min-width: 0` is the load-bearing line, not decoration.
+
+     `.composer` is a grid, and a grid item defaults to `min-width: auto` — meaning it refuses
+     to shrink below its own content's minimum. The longest row here ("command · shadows a
+     skill") set that floor at ~515px, so the composer could not shrink to the pane's 432px and
+     grew to 565 instead, pushing the whole footer 114px past the pane's right edge. The menu
+     did not overflow; it made its *container* refuse to fit.
+
+     Exactly the failure laptop 2 found in `.floor`/`.pane` — an element whose min-content
+     silently sets the floor for a layout that is supposed to be measuring something else.
+  */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  max-height: 15rem;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius);
+  background: var(--night);
+}
+
+/*
+   `.slash .slash__row` rather than `.slash__row`, and the extra class is load-bearing.
+
+   The menu lives inside `.composer`, and `styles.css` has `.composer button` at specificity
+   (0,1,1) painting every button in there as the primary send button. A bare `.slash__row` is
+   (0,1,0) and loses **regardless of which stylesheet loads second** — so the rows came out
+   solid amber with the command name amber-on-amber and therefore invisible.
+
+   Laptop 2 has since scoped `.composer button` to `#send`, which is the better fix and is
+   theirs to land. This does not depend on it: two stylesheets with one author each is a
+   boundary that works precisely because neither has to know what the other is about to change.
+*/
+.slash .slash__row {
+  display: grid;
+  /* `minmax(0, auto)` on the first column, so a long command name shrinks rather than setting
+     a floor the parent has to honour. Same reason as `min-width: 0` above. */
+  grid-template-columns: minmax(0, auto) 1fr auto;
+  min-width: 0;
+  gap: 0.4rem 0.5rem;
+  align-items: baseline;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.slash .slash__row--on,
+.slash .slash__row:hover {
+  background: var(--frame);
+}
+
+.slash .slash__name {
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--lamp);
+}
+
+.slash .slash__args {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--slate);
+}
+
+/* Which of the two it is. A skill becomes a tool call the floor can act on; a command is
+   expanded into a prompt and leaves no trace in the stream. */
+.slash .slash__kind {
+  justify-self: end;
+  /* The longest label in the set. Allowed to wrap rather than to widen the row. */
+  text-align: right;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--slate-dim);
+}
+
+.slash .slash__desc {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--slate);
+}
+
+
+/* ── The roster panel ───────────────────────────────────────────────────────────
+
+   Wider than `.card`, and scrollable, because it is a list rather than a single answer. It
+   composes `.card` rather than restating it: position, border, shadow and the close button
+   all come from there, and only the two dimensions that differ are set here.                */
+
+/* Width only. The cap and the column moved to `.card`, where every panel gets them — they were
+   here, so the two panels that are not `.card--roster` had no cap at all. */
+.card--roster {
+  width: 30rem;
+}
+
+/* A class that sets `display` beats the browser's own `[hidden] { display: none }`, so a panel
+   with `display: flex` on it is a panel that is never hidden — `element.hidden` reads perfectly
+   true the whole time while the thing sits on screen. `styles.css` records the same trap for
+   `.transcripts > [hidden]`; this is the second time it has caught somebody, and it caught this
+   commit before it was committed.
+
+   Written once for every panel and overlay in this file, so a third one cannot rediscover it. */
+.card--roster[hidden],
+.apal[hidden],
+.strip__zones[hidden] {
+  display: none;
+}
+
+.card--roster h3 {
+  overflow-wrap: anywhere;
+  color: var(--slate);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  /* Room for the scrollbar so a row's right edge does not shift when the list grows past
+     the box. */
+  padding-right: 0.25rem;
+}
+
+.roster__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.roster__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--frame);
+  padding-bottom: 0.35rem;
+}
+
+.roster__count {
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+}
+
+.roster__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.6rem 0.7rem;
+  background: var(--ground-1);
+}
+
+/* Sent home, or taken off the shelf. Dimmed and dashed rather than hidden: the whole reason
+   this row exists is that discovery cannot see the file any more, so this is the only place
+   the person can find out they still have one. */
+.roster__row--off {
+  border-style: dashed;
+  background: none;
+}
+
+.roster__row--off .roster__name {
+  color: var(--slate);
+}
+
+.roster__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Said once, above everybody, instead of six times underneath them. */
+.roster__shared {
+  margin: 0 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.roster__name {
+  font-family: var(--mono);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--chalk);
+}
+
+.roster__model {
+  font-size: var(--text-xs);
+  color: var(--info);
+}
+
+.roster__uses {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--slate-dim);
+}
+
+.roster__badge {
+  border: 1px solid var(--lamp-dim);
+  border-radius: var(--radius-control);
+  padding: 0 0.3rem;
+  color: var(--lamp);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.03em;
+}
+
+.roster__badge--off {
+  border-color: var(--frame);
+  color: var(--slate-dim);
+}
+
+/* Two lines, then it stops.
+
+   Every card carried its agent's full description — three or four lines each — which is why the
+   panel was 230px per person and showed **three of seven**. The first sentence says what they
+   do; the rest is dispatch guidance addressed to the manager, not to you, and it is still in the
+   file. A roster is a list of who is here. */
+.roster__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  /*
+   * Three, not two.
+   *
+   * At two, both of this panel's *explanations* were cut mid-clause — the ones written for the
+   * states a reader cannot work out for themselves. A benched employee lost "Their prompt is
+   * untouched", which is the sentence that says benching is not firing; a removed skill lost the
+   * clause saying its row is the record that it was used. In both cases the truncated part
+   * carried the point of the sentence.
+   *
+   * It costs nothing for the ordinary rows: an agent's description is one or two lines and is
+   * unaffected. The clamp is still a clamp — a frontmatter description that runs long is still
+   * bounded — it is just no longer shorter than the two sentences this file writes itself.
+   */
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin: 0;
+  color: var(--slate);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.roster__tools {
+  margin: 0;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* An agent with no `tools:` line inherits everything, including the tool that dispatches other
+   agents. That is a standing order broken by omission, so it is the one thing in this list
+   drawn in the colour that means "look at this". */
+.roster__tools--inherited {
+  color: var(--warn);
+}
+
+/* Right-aligned on the identity row, and quiet until you point at the row.
+
+   Measured before this: **18 buttons in one 480 x 654 panel**, twelve of them `Send home` and
+   `Fire` repeated six times each, every one permanently drawn at full weight on a line of its
+   own. The panel showed three of seven people.
+
+   Quiet, not hidden. They stay in the DOM, keep their labels, and are reachable by keyboard —
+   `:focus-within` is why the second selector exists. What changes is that a list of seven people
+   reads as a list of seven people rather than as twelve destructive buttons, and the actions
+   belong to whichever row you are actually pointing at. No animation: the border and colour
+   change, and that is all. */
+.roster__actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.roster__actions .btn {
+  border-color: transparent;
+  background: none;
+  color: var(--muted-foreground);
+}
+
+.roster__row:hover .roster__actions .btn,
+.roster__row:focus-within .roster__actions .btn {
+  border-color: var(--border-strong);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+/* The armed state below outranks all of it — a button one click from deleting a file does not
+   get to be quiet because nobody is hovering. */
+
+/* `.roster__act` and friends are `.btn` now — see the vocabulary above. What is left here is
+   only what makes each one different, which is the point of having a vocabulary at all. */
+
+/* Armed: one more click deletes the file. It says so, rather than relying on the colour to
+   carry the whole warning. */
+.roster__row .roster__actions .roster__act--armed,
+.roster__act--armed {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: var(--ground-0);
+  font-weight: 600;
+}
+
+/* Dashed, because it adds something that is not there yet rather than acting on something that
+   is. The one visual difference between this and any other button.
+
+   Deliberately not `.btn--ghost`. That variant sets `border-color: transparent`, is declared
+   later in this file, and therefore won — so the add buttons rendered with no border at all
+   while the CSS plainly said "dashed". Caught in a screenshot of the real app; nothing in 759
+   tests looks at a computed border. Two modifiers that disagree about the same property is the
+   collision a variant model is supposed to prevent, and combining them was my mistake rather
+   than the model's. */
+.roster__add {
+  align-self: flex-start;
+  border-style: dashed;
+  border-color: var(--border);
+}
+
+.roster__add:hover {
+  border-style: solid;
+}
+
+/* "Could not be read" is not "empty", and the two must not draw the same. */
+/* Two names because they are two facts: a section that is empty and should not be, and a
+   section whose description has to admit something. Same colour, because to the eye they are
+   the same class of thing — but a privacy caveat wearing a class called `empty` would be a
+   lie in the source about what is on the screen. */
+.roster__empty--problem,
+.roster__desc--problem,
+/* The memory a search sent you to, which is not here any more. Same colour as the other two:
+   it is the same kind of sentence — a surface accounting for something it expected to find. */
+.memory__lede--problem {
+  color: var(--warn);
+}
+
+/* Why there is no "Put back" button on a row that has files listed above it.
+
+   Quieter than the description it sits under, because it is the absence of a control being
+   accounted for rather than a warning: an employee still working, or an undo already done.
+   Neither is a problem, and drawing them in `--warn` would make every finished dispatch on the
+   panel look like something had gone wrong. */
+.find__input {
+  width: 100%;
+  margin: 0.4rem 0 0.2rem;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--ground-0);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+}
+
+.find__summary {
+  margin: 0.5rem 0 0.2rem;
+  font-size: var(--text-xs);
+  color: var(--ink-dim);
+}
+
+/* The source a hit came from — "memory", "project" — so a reader knows which part of their work
+   they are looking at before they read the line. */
+.find__source {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
+.find__row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.find__row:hover,
+.find__row:focus-visible {
+  background: var(--ground-2);
+}
+
+.find__line {
+  flex: none;
+  min-width: 2.5rem;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.find__text {
+  margin: 0;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* The match itself. A background rather than a colour, so it survives both themes without a
+   second definition. */
+/* The match itself.
+
+   `--lamp` is the office's own highlight — the colour a lit desk uses — and it is declared in both
+   themes, so the mark reads on either ground from one declaration. I reached for `--wait-bg` and
+   then `--slate-soft` first; neither exists, and `css-collisions.test.ts` caught both. A var() that
+   is declared nowhere drops the whole declaration in silence, which is a highlight that quietly
+   stops highlighting. */
+.find__hit {
+  background: var(--lamp);
+  color: var(--lamp-text);
+  border-radius: var(--radius-control);
+}
+
+.roster__desc--quiet {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+
+/* ── The forms that write a file ────────────────────────────────────────────────
+
+   A hire and a skill are the same shape: a name that becomes a path, a description the manager
+   routes on, and a body. The path preview is the part worth the pixels — it is what tells you
+   this is a markdown file in your own repository rather than a record in something's database. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.form__label {
+  color: var(--slate);
+  font-size: var(--text-xs);
+  letter-spacing: 0.03em;
+}
+
+.form__input,
+.form__area {
+  width: 100%;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.35rem 0.5rem;
+  background: var(--ground-0);
+  color: var(--chalk);
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.form__area {
+  resize: vertical;
+}
+
+.form__input:focus,
+.form__area:focus {
+  border-color: var(--lamp);
+  outline: none;
+}
+
+.form__input--bad {
+  border-color: var(--bad);
+}
+
+.form__input--off {
+  color: var(--slate-dim);
+  opacity: 0.5;
+}
+
+.form__note {
+  margin: 0;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.form__path {
+  margin: -0.35rem 0 0;
+  color: var(--syn-string);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.form__problem {
+  margin: 0;
+  color: var(--bad);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.form__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.form__check-label {
+  color: var(--slate);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.form__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+
+
+
+/* ── The activity strip ─────────────────────────────────────────────────────────
+
+   Sits between the stage and the status bar. `.floor` declares three explicit grid rows and
+   this is the fourth, which lands in an implicit row — `auto` by default, so the strip is
+   exactly as tall as its content and the stage keeps the remaining space. Deliberately not a
+   change to `.floor`'s template: that rule is in the other author's file and carries a long
+   comment about a feedback loop that a fourth track would be a good way to reopen.            */
+
+.strip {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--frame);
+  min-height: 0;
+}
+
+.strip__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: var(--h-sm);
+  border: 0;
+  padding: 0 0.75rem;
+  background: none;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.strip__bar:hover {
+  color: var(--chalk);
+}
+
+/* Something is waiting for an answer. The bar changes colour so it is legible from across a
+   desk, which is the situation this is actually for — the user has looked away and the office
+   has stopped, waiting. */
+.strip--attention .strip__bar {
+  color: var(--accent);
+}
+
+.strip__zones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0.25rem 0.75rem 0.75rem;
+}
+
+.strip__zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/*
+ * The two zones that are waiting on a person.
+ *
+ * `strip__zone--attention` was applied by `needsYou` and `neverReported` — a tool call held at
+ * the gate, and dispatches that were sent and never came back — and had no rule at all, so the
+ * two things on this strip that need somebody looked exactly like the two that do not.
+ *
+ * A rail rather than a fill or a border: the strip is a column of small blocks and a box around
+ * two of them fights the rhythm, while a rail on the leading edge reads at a glance and costs
+ * four pixels. The colour is the lamp rather than the alarm — these are waiting, not broken, and
+ * spending the alarm here would leave nothing louder for the things that are.
+ */
+.strip__zone--attention {
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--lamp-dim);
+}
+
+.strip__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.strip__count {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+}
+
+.strip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.2rem 0.45rem;
+  background: var(--ground-1);
+  color: var(--chalk);
+  font-size: var(--text-xs);
+}
+
+.chip:hover {
+  border-color: var(--lamp-dim);
+}
+
+.chip__who {
+  font-weight: 600;
+}
+
+.chip__doing {
+  color: var(--info);
+  font-size: var(--text-2xs);
+}
+
+.chip__age {
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+}
+
+.strip__log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.logline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.logline__who {
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  color: var(--slate);
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.logline__text {
+  flex: 1 1 auto;
+  color: var(--slate);
+  overflow-wrap: anywhere;
+}
+
+/* How many times a line stood for. Only rendered when it is more than one — a "×1" on every
+   ordinary row would be noise added while removing noise. */
+.logline__count {
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.logline__at {
+  flex: 0 0 auto;
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+}
+
+.logline--done .logline__text {
+  color: var(--good);
+}
+
+.logline--refused .logline__text,
+.logline--failed .logline__text {
+  color: var(--bad);
+}
+
+.logline--skill .logline__text,
+.logline--meeting .logline__text {
+  color: var(--info);
+}
+
+/* A dispatch that never came back. Not an error and not a success — the turn ended first, and
+   the log says exactly that rather than picking one of the two. */
+.logline--note .logline__text {
+  color: var(--warn);
+}
+
+/* Read out of a transcript on relaunch rather than watched happening.
+
+   A weaker claim than the lines around it, and the tag says so in one word. Before this the
+   strip simply forgot on restart and said "Nothing yet this session" over a transcript full of
+   dispatches — so the fix is a log that remembers, and the tag is what stops the fix becoming a
+   second lie by presenting hearsay as observation. */
+.logline__earlier {
+  flex: 0 0 auto;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  font-family: var(--mono);
+}
+
+
+/* ── A held tool call ───────────────────────────────────────────────────────────
+
+   The one card in this app where a loose summary would be worse than no card at all: it is
+   asking somebody to say yes to a specific string, so it shows the string.                    */
+
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid var(--lamp-dim);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  padding: 0.5rem 0.6rem;
+  background: var(--ground-1);
+}
+
+/* An MCP tool goes wherever that server goes and its name does not say what it does. Unknown
+   is not "probably fine". */
+.approval--unknown,
+.approval--writes {
+  border-left-color: var(--bad);
+}
+
+.approval--network {
+  border-left-color: var(--warn);
+}
+
+.approval--reads {
+  border-left-color: var(--info);
+}
+
+.approval__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.approval__tool {
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.approval__weight {
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+}
+
+/* Who is stopped. Quieter than the command, louder than the metadata under it. */
+/* The tool call behind what someone is doing. Quiet — evidence, not narration. */
+.card__doing-trace {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-2xs);
+  color: var(--slate-dim);
+  overflow-wrap: anywhere;
+}
+
+.approval__who {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--slate);
+}
+
+/* How long is left to answer.
+
+   Only on screen when the number would change what somebody does — under a minute, or past the
+   deadline — so it is drawn as the warning it is at that point rather than as another quiet
+   caption. It is also the only line on the card that moves: everything else is fixed from the
+   moment it appears, which is why it carries `role="status"`. */
+.approval__clock {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+}
+
+.approval__detail {
+  margin: 0;
+  border-radius: var(--radius-control);
+  padding: 0.35rem 0.45rem;
+  background: var(--ground-0);
+  color: var(--syn-string);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.approval__more {
+  margin: 0;
+  color: var(--warn);
+  font-size: var(--text-2xs);
+}
+
+.approval__rest {
+  margin: 0;
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+  overflow-wrap: anywhere;
+}
+
+.approval__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.approval__act--refuse:hover {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+/* Allowing is not the quiet default and must not look like one. It is the same weight as
+   refusing, and it says "once" because that is what a single verdict is. */
+.approval__act--allow:hover {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+
+/* ── A dispatch that never reported back ────────────────────────────────────────
+
+   Deliberately the approval card's shape without the approval card's colour. A held tool call
+   is stopping the office right now and is drawn in the accent; this is work that stopped some
+   time ago, and borrowing that urgency would make both of them mean less.
+
+   Three buttons, all the same weight. There is no quiet default here — dropping is as much a
+   decision as retrying, and a card styled to make one of them look like the obvious click would
+   be nudging somebody into writing off work they were waiting for.                            */
+
+.unfinished {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border: 1px solid var(--frame);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-control);
+  padding: 0.5rem 0.6rem;
+  background: var(--ground-1);
+}
+
+.unfinished__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.unfinished__who {
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.unfinished__at {
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+}
+
+/* Capped and scrollable. A brief is the whole instruction, not a summary line, and one long
+   enough to fill the panel would push the buttons that act on it off the bottom. */
+.unfinished__brief {
+  margin: 0;
+  max-height: 7rem;
+  overflow: auto;
+  border-radius: var(--radius-control);
+  padding: 0.35rem 0.45rem;
+  background: var(--ground-0);
+  color: var(--slate);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.unfinished__verify {
+  margin: 0;
+  color: var(--info);
+  font-size: var(--text-2xs);
+  overflow-wrap: anywhere;
+}
+
+/* "There was no check" is a fact about the original dispatch and is said in the same place the
+   check would have been, rather than by leaving a gap somebody has to interpret. */
+.unfinished__verify--none {
+  color: var(--slate-dim);
+  font-style: italic;
+}
+
+.unfinished__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.unfinished__act--drop:hover {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.unfinished__act--retry:hover,
+.unfinished__act--resume:hover {
+  border-color: var(--info);
+  color: var(--info);
+}
+
+/* The ledger itself would not open. Louder than a missing row, because every count beside it is
+   then a count of what we could read rather than of what is outstanding. */
+.unfinished__problem {
+  margin: 0;
+  color: var(--bad);
+  font-size: var(--text-xs);
+}
+
+/* A line of the ledger we could not parse. Shown rather than skipped: absent is not empty, and
+   the line nobody can read may be the record of the dispatch somebody is looking for. */
+.unfinished__torn {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--warn);
+  font-size: var(--text-2xs);
+}
+
+.unfinished__torn-at {
+  color: var(--slate-dim);
+}
+
+.unfinished__torn-why {
+  overflow-wrap: anywhere;
+}
+
+/* The watchdog's mark on a running chip. A statement about what has arrived, never a diagnosis:
+   `--warn` rather than `--bad`, because nothing here knows that anything is wrong. */
+.chip__quiet {
+  color: var(--warn);
+  font-size: var(--text-2xs);
+}
+
+
+/* The assembled prompt, verbatim.
+
+   Capped and scrollable rather than allowed to push the rest of the panel off screen: this
+   string is routinely several thousand characters, and the sections above it are the ones
+   somebody opened the panel for. */
+.privacy__prompt {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.5rem 0.6rem;
+  background: var(--ground-0);
+  color: var(--slate);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+/* ── The turns that are not in the DOM ──────────────────────────────────────────
+
+   Windowing keeps the transcript fast — see WINDOW in chat-view.ts for the measurements — and
+   this button is the honesty condition on it. The panel's promise is that it shows the session
+   rather than a tidied account of it, so what came off the top says so and comes back on
+   request. A transcript that silently dropped its first four thousand messages would look
+   complete, which is the worst way for this to be wrong.                                     */
+
+.earlier {
+  align-self: center;
+  border: 1px dashed var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.25rem 0.7rem;
+  background: none;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+}
+
+.earlier:hover {
+  border-color: var(--lamp);
+  border-style: solid;
+  color: var(--lamp);
+}
+
+
+/* ── Settings, applied ──────────────────────────────────────────────────────────
+
+   Four preferences, three mechanisms. F9's seam is the one `views/palette.ts` describes: the
+   palette control on the status bar is gone and `applyPalette` is called from the panel.
+
+   These rules override `styles.css` by loading second at equal specificity, which is the
+   arrangement that file already assumes — it declares the layout and this composes it. None of
+   them declares a colour.                                                                     */
+
+/* Declared here, and overridden by `views/settings.ts` at runtime.
+
+   Not left to JavaScript alone, and the reason is the one this file's header already records:
+   an undefined custom property resolves to *nothing*, so a rule using one renders unstyled
+   rather than wrong. Declaring the defaults means the stylesheet is complete on its own and the
+   settings module only ever changes a value that already exists. `test/palette.test.ts` caught
+   the first version of this commit doing exactly that. */
+:root {
+  --font-scale: 1;
+  --density: 1;
+}
+
+
+/* ── The semantic layer ─────────────────────────────────────────────────────────
+
+   shadcn/ui was asked for as a reference, and this is the idea worth taking: **every surface
+   token is paired with a `-foreground`**, so a component names the surface it sits on and gets
+   the right text colour for free. Nothing ever picks a text colour out of the palette.
+
+   We had the raw materials and not the pairing — four grounds and three inks, unrelated — which
+   is why the roster, the strip and the privacy panel each arrived at a slightly different idea
+   of "quiet text on a raised surface". Three files, three answers, all defensible.
+
+   Every value here is **derived** by `semanticVariables()` in `shared/palette.ts` from a ground,
+   an ink or a role that palette already declares. Declared statically as well as generated, for
+   the same reason the palette itself is: the first paint happens before any script runs, and an
+   undefined custom property renders as nothing at all. `test/palette.test.ts` asserts the two
+   agree, which is what makes "one source" true rather than aspirational.                       */
+
+:root {
+  --background: #0b0e17;
+  --foreground: #e6e3dd;
+
+  --card: #131826;
+  --card-foreground: #e6e3dd;
+
+  /* Same ground as a card on purpose: a popover is a card that floats, and giving it its own
+     shade would make identical content two colours depending on where it opened. */
+  --popover: #131826;
+  --popover-foreground: #e6e3dd;
+
+  --muted: #1a2132;
+  --muted-foreground: #98a0b3;
+
+  --secondary: #232a3d;
+  --secondary-foreground: #e6e3dd;
+
+  --primary: #e8b25e;
+  /* Text *on* the accent. Both themes put a light hue there, so the darkest ground is what stays
+     legible — and naming it stops each button guessing. One of them guessed `#241a08`, a literal
+     belonging to neither theme. */
+  --primary-foreground: #0b0e17;
+
+  --destructive: #e0685f;
+  --destructive-foreground: #0b0e17;
+
+  --border: #232a3d;
+  /* The edge of a control, at the 3:1 WCAG 1.4.11 asks for. `--border` is 1.24:1 against the
+     card it sits on, which is right for a divider and invisible on a button. */
+  --border-strong: #6e737f;
+  /* Darker than the card it sits on, so a field reads as a hole rather than a raised tile. */
+  --input: #0b0e17;
+  --ring: #e8b25e;
+}
+
+
+/* ── Space ──────────────────────────────────────────────────────────────────────
+
+   A 4px grid. It was not retrofitted onto the eleven hundred lines of CSS already written —
+   that would be churn with no visible result — but everything from here uses it, which is how
+   a scale actually arrives in a codebase.
+
+   The radius scale that used to live here is gone. It derived three sizes from one base, and
+   its smallest computed to exactly 3px: the same value `styles.css` already declares as
+   `--radius-control` and argues for at length. Two names for one value is how a component ends
+   up rounder than the one beside it for no reason anybody can state. Two radii now, both in
+   `styles.css`, both named for what they are: a surface, or a control.                         */
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+}
+
+/* Text size. Every `rem` in both stylesheets resolves against the root, so one multiplier here
+   moves the whole interface together — including `--pane-width`, which is why the pane stays in
+   proportion instead of the type outgrowing it. */
+html {
+  font-size: calc(100% * var(--font-scale));
+  /* On the root, not on `body`. `body` set the family and `html` did not, so the root element
+     resolved to the user-agent default — Times — and anything that ever landed outside `body`,
+     or inherited before `body` matched, would have got a serif nobody chose. Costs nothing and
+     removes a way for the wrong font to appear. */
+  font-family: var(--sans);
+}
+
+/* Which side the conversation is on. The floor is drawn at an integer scale and re-fits itself
+   from a ResizeObserver, so swapping the columns costs one relayout and nothing else. */
+:root[data-side="left"] .building {
+  grid-template-columns: var(--pane-width) 1fr;
+}
+
+/* The conversation column is moved in the **document** rather than with `order`, so the tab
+   order and the screen agree — see `orderColumns` in views/settings.ts. `order: -1` used to live
+   here, and CSS reordering is defined not to affect sequential navigation, so the column a person
+   saw first was the second one the keyboard reached. The grid places columns in document order,
+   so the widths above follow from the move without a second rule. */
+
+/* Density. Spacing only — never type size, which is what `--font-scale` is for. Conflating the
+   two gives you a "compact" that is really just small, and then neither control does what it
+   says. `--density` is a multiplier so a value can be reasoned about rather than guessed. */
+:root[data-density="compact"] .pane__head {
+  padding-top: calc(0.5rem * var(--density));
+  padding-bottom: calc(0.5rem * var(--density));
+}
+
+:root[data-density="compact"] .transcript {
+  gap: calc(1rem * var(--density));
+  padding: calc(1rem * var(--density));
+}
+
+:root[data-density="compact"] .composer {
+  padding: calc(0.75rem * var(--density));
+  gap: calc(0.5rem * var(--density));
+}
+
+:root[data-density="compact"] .strip__zones {
+  gap: calc(0.75rem * var(--density));
+}
+
+
+/* ── The settings panel ─────────────────────────────────────────────────────── */
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.setting__label {
+  margin: 0;
+  color: var(--slate);
+  font-size: var(--text-xs);
+  letter-spacing: 0.03em;
+}
+
+.setting__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.setting__choice {
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.25rem 0.6rem;
+  background: none;
+  color: var(--slate);
+  font-size: var(--text-xs);
+}
+
+.setting__choice:hover {
+  border-color: var(--lamp-dim);
+  color: var(--chalk);
+}
+
+.setting__choice[aria-checked="true"] {
+  border-color: var(--lamp);
+  background: var(--ground-2);
+  color: var(--lamp);
+}
+
+/* Keyboard focus, visible. A radio group where only one button is tabbable is only usable if
+   you can see which one you are on. */
+.setting__choice:focus-visible,
+.roster__act:focus-visible,
+.roster__add:focus-visible,
+.chip:focus-visible,
+.earlier:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 1px;
+}
+
+.setting__note {
+  margin: 0;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+
+/* ── The command palette ────────────────────────────────────────────────────────
+
+   A backdrop and a box near the top, which is where the eye already is after a keystroke that
+   opened something. Centred vertically would put the list under the cursor's last position and
+   make every use start with a search for the box.                                             */
+
+.apal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.apal__box {
+  display: flex;
+  flex-direction: column;
+  width: min(34rem, calc(100vw - 3rem));
+  max-height: 60vh;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius);
+  background: var(--ground-1);
+  box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.apal__input {
+  border: 0;
+  border-bottom: 1px solid var(--frame);
+  padding: 0.7rem 0.85rem;
+  background: none;
+  color: var(--chalk);
+  font-size: var(--text-md);
+}
+
+.apal__input:focus {
+  outline: none;
+}
+
+.apal__list {
+  overflow-y: auto;
+  padding: 0.35rem;
+}
+
+.apal__group {
+  margin: 0.4rem 0 0.2rem;
+  padding: 0 0.5rem;
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.apal__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-control);
+  padding: 0.35rem 0.5rem;
+  background: none;
+  color: var(--slate);
+  font-size: var(--text-md);
+  text-align: left;
+}
+
+.apal__row--on {
+  background: var(--ground-3);
+  color: var(--chalk);
+}
+
+.apal__label {
+  overflow-wrap: anywhere;
+}
+
+.apal__keys {
+  flex: 0 0 auto;
+  color: var(--slate-dim);
+  font-size: var(--text-xs);
+}
+
+
+
+/* ── Getting started ────────────────────────────────────────────────────────────
+
+   Three severities, three colours, and the third is the one that matters: "nothing here yet" is
+   not a fault. Somebody who has just cloned this and started nothing is in a correct state, and
+   drawing that in the same red as a missing binary would teach them the app is broken on the
+   first screen they see.                                                                      */
+
+.firstrun__step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--frame);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  padding: 0.6rem 0.7rem;
+  background: var(--ground-1);
+}
+
+.firstrun__step--blocked {
+  border-left-color: var(--bad);
+}
+
+.firstrun__step--warning {
+  border-left-color: var(--warn);
+}
+
+/* Nothing is wrong. The only row on the panel when every check passed, so it carries the good
+   colour rather than the frame's — a person who pressed "getting started" and got a panel back
+   should be able to tell in one glance that it is an answer and not a list of faults. */
+.firstrun__step--ready {
+  border-left-color: var(--good);
+}
+
+/* Not a fault. Dashed and quiet — the same treatment a benched employee gets, and for the same
+   reason: this is a state, not a problem. */
+.firstrun__step--empty {
+  border-left-color: var(--frame);
+  border-style: dashed;
+  background: none;
+}
+
+/* A step's explanation, whole. The type is `.roster__desc`'s; the clamp is not. A roster row's
+   description comes from somebody's frontmatter and can run on, but this app writes these, and
+   the sentence three lines would cut is usually the fix. Dev's own missing-hook detail needed
+   117px and showed 59, so its "The gate is two files…" sentence was cut after its first words.
+   `.roster` already scrolls vertically, so a long one costs a scroll rather than the panel.
+   `overflow-wrap` is for one long unbroken token, such as a path in a cause, which would
+   otherwise push the panel sideways. */
+.firstrun__detail {
+  margin: 0;
+  color: var(--slate);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.roster__badge--warning {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* A command to run somewhere else. Shown, never run: Office Space installs nothing and touches
+   nobody's PATH — it spawns a binary the user already chose to have. An onboarding screen that
+   started `npm install -g` on their machine would be a different product. */
+.firstrun__cmd {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.firstrun__cmd-text {
+  flex: 1 1 auto;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  padding: 0.3rem 0.45rem;
+  background: var(--ground-0);
+  color: var(--syn-string);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+
+/* ── A face, outside the floor ──────────────────────────────────────────────────
+
+   The same character that is at their desk, in the conversation and on their card. One identity
+   system, two views — see `views/avatar.ts` for why it is a canvas and not an image.
+
+   The initial underneath is not a placeholder in the usual sense: it is what shows while the
+   art decodes *and* what shows if the art never arrives, so a person never becomes a blank
+   square in a list of people.                                                                 */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  vertical-align: -0.15em;
+  border-radius: var(--radius-control);
+  background: var(--ground-2);
+  overflow: hidden;
+}
+
+.avatar__initial {
+  color: var(--slate-dim);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+.avatar__art {
+  width: 100%;
+  height: 100%;
+  /* Belt and braces with `imageSmoothingEnabled = false`: the canvas is already backed at the
+     device ratio, and this keeps it exact if a browser scales it anyway. */
+  image-rendering: pixelated;
+}
+
+/* The speaker line in the transcript, now that it carries a face. */
+.turn__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* The card's heading, same treatment at portrait size. */
+#card-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+
+/* ── The transcript's one long line ─────────────────────────────────────────────
+
+   Found by running the real app against the real workspace: every line of a reply clipped at
+   the same x, with a horizontal scrollbar under it. Reproduced in the harness — a transcript
+   343px wide reporting `scrollWidth: 664`.
+
+   The cause is three rules that are each correct on their own. `.turn` is a grid, so
+   `.turn__body` is a grid item and its automatic minimum size is its **min-content width**.
+   Inside it sits a fenced block — `<pre class="md-code">`, `white-space: pre` — holding one
+   unbreakable line, in the case that found this an absolute path a hundred characters long. Its
+   `overflow-x: auto` is meant to make it scroll itself, and it *would* if it were a flex or grid
+   item, whose automatic minimum size is zero. It is a normal block, so its min-content
+   contribution is the whole line, and the turn is dragged out to that width. The prose then
+   wraps to the wider box and everything is clipped by the pane.
+
+   `min-width: 0` is the whole fix: the grid item may shrink again, and the `<pre>` scrolls
+   inside it exactly as it was written to.
+
+   `.pane > *` in `styles.css` already does this one level up, with a comment saying why — "or
+   one long word in any of them re-widens the whole column and pushes the rest off-screen".
+   Same failure, one level further in.                                                          */
+
+.turn > * {
+  min-width: 0;
+}
+
+
+/* ── Buttons, one vocabulary ────────────────────────────────────────────────────
+
+   Counted before writing this: nine different button classes across the app — `roster__act`,
+   `roster__add`, `form__submit`, `approval__act`, `setting__choice`, `session--new`, `earlier`,
+   `task__run`, `voice` — most of them the same three declarations with different padding. Each
+   was locally reasonable; together they are why no two panels agree on what a button looks like.
+
+   shadcn's answer is a variant model: one component, a small closed set of looks, a size axis.
+   Here that is one class plus modifiers, and the point is not the CSS saved — it is that the
+   next panel has a button to reach for instead of a decision to make.
+
+      .btn              the ordinary one
+      .btn--primary     the single action a surface is for
+      .btn--ghost       a control that should not draw the eye until you look for it
+      .btn--danger      delete, fire, refuse
+      .btn--sm          in a dense row
+
+   Every colour is a semantic token, so a button never picks a foreground.                      */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  /* Height, not vertical padding. Padding gave 23.2px, which is under the 24px AA floor, and it
+     moved every time the type size did. A min-height holds the target whatever the text does. */
+  min-height: var(--h-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-3);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  border-color: var(--border);
+}
+
+.btn--primary {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: none;
+  color: var(--muted-foreground);
+}
+
+.btn--ghost:hover {
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.btn--danger:hover {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+.btn--sm {
+  min-height: var(--h-sm);
+  padding: 0 var(--space-2);
+}
+
+
+/* ── The select we own ──────────────────────────────────────────────────────────
+
+   A trigger, and a list that is a list — one row per option with the sentence that says what it
+   does. The native control could not carry that sentence, which is the whole reason this exists.
+
+   No animation, on Khalid's instruction: it appears, it disappears.                            */
+
+.sel {
+  position: relative;
+  display: inline-flex;
+}
+
+.sel__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--h-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-2);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.sel__trigger::after {
+  content: "▾";
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+}
+
+.sel__trigger:hover {
+  border-color: var(--primary);
+  color: var(--foreground);
+}
+
+.sel__trigger:focus-visible,
+.sel__trigger[aria-expanded="true"] {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Set to something other than the default. The one visual difference between "I chose this" and
+   "the CLI decides", and it has to survive a glance across three pickers in a row. */
+.sel__trigger[data-set="true"] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* A value this CLI does not know. Reported rather than quietly reset — the session is running
+   something, and it is not what the picker was asked for. */
+.sel__trigger[data-unknown="true"] {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+/* `bypassPermissions`, chosen. Almost nothing asks before an agent runs a command its rules do
+   not stop, and the closed control says so without needing to be opened. */
+.sel__trigger[data-grave="true"] {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+.sel__list {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 30;
+  min-width: 17rem;
+  /* `max-height` is set on open, from the room actually available — see `place()`. Left
+     unbounded here so the measurement is the only thing deciding. */
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-1);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.45);
+}
+
+/* Opened downward, when there is more room below than above. */
+.sel__list--down {
+  bottom: auto;
+  top: calc(100% + var(--space-1));
+}
+
+.sel__list:focus {
+  outline: none;
+}
+
+.sel__row {
+  display: grid;
+  gap: 1px;
+  border-radius: var(--radius-control);
+  padding: var(--space-2);
+  cursor: default;
+}
+
+/* Where the cursor is — keyboard or mouse, the same mark, because they are the same thing. */
+.sel__row--on {
+  background: var(--secondary);
+}
+
+.sel__label {
+  color: var(--foreground);
+  font-size: var(--text-sm);
+}
+
+/* A tick, in the gutter the grid does not have — set on the label so the row stays two lines. */
+.sel__row--picked .sel__label::after {
+  content: " ✓";
+  color: var(--primary);
+}
+
+.sel__row--grave .sel__label {
+  color: var(--destructive);
+}
+
+.sel__detail {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+
+/* ── What just happened ─────────────────────────────────────────────────────────
+
+   Hiring somebody, writing a skill, taking one off the shelf and deleting a store all succeeded
+   in silence: the panel redrew and nothing said the write had landed. Inferring it from a list
+   that is one row shorter is not the same as being told, and it is a poor answer to a button
+   whose label was "Delete their file".
+
+   Over the floor rather than in a row of its own, so nothing reflows when it appears — a status
+   message that moves the interface is a status message that costs more than it says.          */
+
+.said {
+  /* Fixed to the window, and above everything. The first version was `absolute` inside the
+     conversation panel and landed behind the roster card whose button had just been pressed. */
+  position: fixed;
+  left: 50%;
+  /* Clear of the status bar, which runs along the very bottom of the floor. At 1.5rem it
+     sat on top of the pills and the Send button. */
+  bottom: 3.5rem;
+  z-index: 40;
+  transform: translateX(-50%);
+  max-width: min(32rem, 80%);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.45);
+}
+
+/*
+   Never `hidden`, and never `display: none`.
+
+   This is the app's `aria-live` region — every "Spotify connected", "the stored token has been
+   deleted", "Office Space will make no network requests of its own" goes through it. A live
+   region only announces a change that happens **while it is in the accessibility tree**, and
+   `say()` set the text first and revealed the element second: the change landed on a node that
+   was not there, and the node then arrived with the text already in it, which is the one case
+   screen readers are documented not to announce.
+
+   Measured in the running app over CDP, reading the real tree:
+
+     hidden (as it shipped)     inTree=false
+     display:none               inTree=false
+     visibility:hidden          inTree=false
+     opacity:0                  inTree=true   live=polite
+     height:0;overflow:hidden   inTree=true   live=polite
+
+   So the three obvious ways to hide it are the three that break it. Opacity keeps the node,
+   its role and its `live` property in the tree at every moment, which means the only thing that
+   ever changes is the text — and that is exactly the event a live region exists to report.
+
+   `pointer-events` goes with it because an invisible box at `z-index: 40` across the middle of
+   the window would otherwise still swallow clicks.                                          */
+.said {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.said[data-shown='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.said[data-tone="done"] {
+  border-left-color: var(--good);
+}
+
+/* A refusal or a failure. Held on screen more than twice as long, because it is the one
+   somebody may want to re-read or copy into a message to somebody else. */
+.said[data-tone="failed"] {
+  border-left-color: var(--destructive);
+}
+
+
+/* ── The pane on the left, and the traffic lights ───────────────────────────────
+
+   macOS draws its three window buttons over the top-left of the window, and `styles.css`
+   reserves room for them with `padding-left: 5.5rem` on `.floor__chrome` — correct while the
+   floor was the left-hand column. F9 made the conversation the default left column, and the
+   buttons landed on top of the first project tab: the red one sat in the middle of the word
+   "The office", which reads as a rendering fault rather than as a window control.
+
+   So the clearance follows the layout rather than the element.
+
+   It then regressed, because following the layout was written as following `.tabs` — and the
+   switcher replaced the tab strip a release later. The give-back below kept working, the rule
+   that was supposed to catch what it gave back addressed an element that no longer existed,
+   and the buttons went back to sitting on the control underneath them. Every rule here was
+   individually correct; what broke was the join between them, which is exactly the failure
+   this repository keeps finding.
+
+   `.pane__head` is the header the switcher lives in, and `side: 'left'` is the default — so
+   this is the shipping configuration, not a corner of the settings nobody visits.
+   `css-applied.test.ts` now fails if a selector here names a class the app never sets.
+
+   ## Why the clearance is vertical rather than horizontal
+
+   It was `padding-left: 5.5rem`, which works and looks wrong. Measured in the running app, the
+   three buttons occupy x 13-65, y 13-25. Pushing the header 88px right cleared them and left an
+   L-shaped hole in the corner: the switcher started at x=90 while every other row in the same
+   pane — the composer, the transcript — starts at the pane's own 1.25rem. One column, two left
+   edges, and the eye reads the indented one as broken rather than as deliberate.
+
+   Going *under* the buttons costs 8px of header height and nothing else, and it puts the
+   switcher back on the pane's left edge where the rest of the column already is.
+
+   The padding is a plain length, deliberately, where the density rule above uses
+   `calc(0.5rem * var(--density))`. macOS draws those buttons at a fixed size at a fixed offset;
+   they do not shrink because somebody chose a compact layout. A clearance that scales with a
+   preference is a clearance that is wrong at one of the settings — and compact is the setting
+   it would be wrong at, since `--density: 0.75` would ask for 6px of room for a 25px obstacle.
+
+   That this rule wins over the density rule is source order: both selectors are (0,3,0), and
+   this one is further down the file. Moving either above the other silently restores the
+   collision, so they stay in this order.                                                     */
+
+:root[data-side="left"] .pane__head {
+  padding-top: 2.25rem;
+}
+
+/* And the floor gives it back — it is no longer the column under the buttons. */
+:root[data-side="left"] .floor__chrome {
+  padding-left: 1.5rem;
+}
+
+/* The dial is a wrapper now, not a control. Everything that draws is in `.sel`. */
+.dial {
+  display: inline-flex;
+}
+
+
+/* ── The campus scrolls ─────────────────────────────────────────────────────────
+
+   Every office on the campus is now its own artwork at full pixel size rather than a
+   rectangle, so a campus of forty does not fit a screen and must not be squeezed until it
+   does — shrinking is precisely what made the old campus a grid of coloured smudges.
+
+   `.stage` clips the office view on purpose (`overflow: hidden`, so a wall that spills over is
+   trimmed rather than pushing the layout about). In campus mode it scrolls instead, and the
+   content starts at the top rather than being centred, because a centred grid taller than its
+   box hides its first row above the scroll origin.                                            */
+
+.stage[data-view="campus"] {
+  overflow: auto;
+  place-items: start center;
+  padding: 0.75rem;
+  /* Momentum scrolling stops at the edge instead of bouncing the whole window. */
+  overscroll-behavior: contain;
+  /* The office stage caps its track so an oversized floor is trimmed evenly instead of losing
+     one whole side. **The campus keeps that asymmetry, deliberately**, and it is worth saying
+     as a decision rather than as an exemption: scrolling makes right-and-bottom overflow
+     reachable, and centring would make top-and-left overflow unreachable. That is the same
+     fault the block-axis `start` above exists to avoid, arriving on the inline axis.
+
+     Measured both ways. A campus *wider* than the stage: the track grows to 2000px, scrollWidth
+     follows to 2024, and nothing sits left of the scroll origin. A campus *smaller* than the
+     stage — one office in a wide window, which is a new user's first screen — resolves the track
+     to the content box either way, so `none` and `minmax(0, 1fr)` place it identically. The
+     regime where centring would apply is the one regime where the two are the same. */
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+
+/* The campus is a grid of buttons in spirit, so it should say so under the cursor. */
+.stage[data-view="campus"] canvas {
+  cursor: pointer;
+}
+
+
+/* ── Going inside a project ─────────────────────────────────────────────────────
+
+   Clicking an office animates going inside the project: a zoom in, and deliberately not a
+   flourish.
+
+   A copy of that office's thumbnail, positioned over the card it came from and transformed up
+   to fill the stage while it fades. Composited by the browser, so the render loop pays nothing
+   — see `zoomInto` for why this is not done on the canvas.
+
+   `transform` and `opacity` only. Those are the two properties a browser can animate without
+   laying anything out, and animating anything else here would cost a reflow per frame on the
+   view that is about to be rebuilt anyway.                                                     */
+
+.flier {
+  position: fixed;
+  z-index: 25;
+  transform-origin: center center;
+  image-rendering: pixelated;
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 220ms linear;
+}
+
+/* Asked for, and refused. A zoom is exactly the movement this setting exists to decline, and
+   `zoomInto` skips the whole overlay when it is set — this is the belt to that pair of braces. */
+@media (prefers-reduced-motion: reduce) {
+  .flier {
+    transition: none;
+  }
+}
+
+
+/* ── A question the manager is asking ───────────────────────────────────────────
+
+   The brief: a manager that thinks on the spot and asks questions, offering a recommended
+   option with a little explanation of it.
+
+   Options are buttons, so the answer is a click and the click becomes a message in the same
+   conversation. One is marked as the manager's own pick, and only one: two recommendations are
+   not a recommendation.                                                                        */
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 0.55rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--card);
+}
+
+.ask__q {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ask__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/*
+   The way out of a question.
+   
+   Deliberately unlike the options: no border, no card, aligned left under them. Every control
+   above it is a way of answering, and a skip that looked like a fourth answer would be one —
+   people would pick it as an option rather than as a refusal to pick. Meets the 24px target
+   floor through padding rather than through a box, so it stays quiet at rest.
+*/
+.ask__skip {
+  margin-top: var(--space-2);
+  padding: 0.375rem 0;
+  min-height: var(--h-sm);
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ask__skip:hover:not(:disabled) { color: var(--foreground); }
+.ask__skip:disabled { cursor: default; text-decoration: none; }
+.ask__skip--chosen { color: var(--foreground); }
+
+.ask__option {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--space-2);
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.ask__option:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.ask__option:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Answered. Every option in the card goes dead together — the question is closed, and a second
+   answer arrives as a bare noun in the middle of the work that followed the first. */
+.ask__option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ask__option--chosen:disabled {
+  opacity: 1;
+  border-color: var(--good);
+}
+
+.ask__option--pick {
+  border-color: var(--primary);
+}
+
+.ask__label {
+  font-weight: 600;
+}
+
+.ask__badge {
+  justify-self: start;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-control);
+  padding: 0 0.3rem;
+  color: var(--primary);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.03em;
+}
+
+.ask__detail {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+
+/* ── Waiting, and nothing there ─────────────────────────────────────────────────
+
+   Two states that are easy to draw the same and must not be. A panel that is still reading the
+   disk and a panel that read it and found nothing are different facts, and the person is
+   looking at the panel *because* they want to know which.
+
+   No spinner. A spinner says "wait"; a sentence says what is being waited for, which is the
+   difference between a slow panel and a broken one.                                            */
+
+.loading {
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+
+.loading::after {
+  content: "";
+}
+
+/* One shape for "there is nothing here", wherever it appears. Three panels had three, which
+   read as three different kinds of nothing. */
+.roster__empty,
+.strip__quiet,
+/* The switcher's filter, which appears only once there is enough to filter. Full width so it
+   reads as the head of the list rather than a control floating over it, and `search` rather than
+   `text` for the clear button a person expects from one. */
+.swfilter {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--chalk);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.swfilter:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* ── What the office remembers ──────────────────────────────────────────────────
+
+   One card per fact, grouped by the kind the file declares. The three silences —
+   nothing recorded, could not be read, could not look — are styled apart from the
+   cards rather than dressed as them, because a grey card reads as a record with
+   the text missing. */
+
+.memory__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.memory__group {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.memory__empty,
+.memory__unread {
+  margin: var(--space-2) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* An unreadable memory is a gap in the record, so it is marked rather than muted into the
+   background — the one thing it must not look like is an entry that happens to be short. */
+.memory__unread {
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--frame);
+}
+
+.memcard {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+}
+
+/* A file with no frontmatter is somebody's note, not a record. Dashed, so the difference is
+   visible before the caption explaining it is read. */
+.memcard--note {
+  border-style: dashed;
+}
+
+.memcard__title {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.memcard__meta {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-family: ui-monospace, monospace;
+}
+
+/* `white-space: pre-wrap` is gone with the plain text it was for — the body is rendered markdown
+   now, so paragraphs are elements and preserving newlines on top of them doubles every gap. */
+.memcard__body {
+  margin: var(--space-1) 0 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.memcard__body > :first-child {
+  margin-top: 0;
+}
+
+.memcard__body > :last-child {
+  margin-bottom: 0;
+}
+
+.memcard__body--empty {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+/* ── What the office did while you were out ─────────────────────────────────────
+
+   Three outcomes, three left edges, and the third is the one that matters. `allowed`
+   and `declined` are both answers a person gave; `unreadable` is an answer the office
+   lost, and it gets the dashed edge for the reason the hooks panel above gives — the
+   one thing it must never look like is either of the two answers it is not.
+
+   Not colour alone. A dashed border reads without hue, and the card says which in
+   words as well, because a record of what you permitted is the wrong place to make
+   somebody distinguish two states by shade. */
+
+.decided__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+}
+
+.decided__lede--problem {
+  color: var(--bad);
+}
+
+.decided__group {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.decided__empty,
+.decided__unread {
+  margin: 0 0 var(--space-2);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* A record that would not open is a gap in the account, so it is marked rather than
+   muted away — the one thing it must not look like is an entry that happens to be short. */
+.decided__unread {
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--frame);
+}
+
+.deccard {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+}
+
+.deccard--allowed {
+  border-left-color: var(--good);
+}
+
+.deccard--declined {
+  border-left-color: var(--muted-foreground);
+}
+
+.deccard--unreadable {
+  border-left-color: var(--bad);
+  border-left-style: dashed;
+}
+
+/* Opened *at* this record, from a search result rather than from the menu. Marked so the
+   thing somebody clicked is findable in a list that may be long. */
+.deccard--found {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.deccard__title {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  /* The command verbatim, and long ones wrap rather than stretching the panel. */
+  overflow-wrap: anywhere;
+}
+
+.deccard__verdict {
+  margin: var(--space-1) 0 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+}
+
+.deccard__meta {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-family: ui-monospace, monospace;
+}
+
+/* Said, never implied — a command shown cut is one somebody could read as complete. */
+.deccard__cut {
+  margin: 2px 0 0;
+  color: var(--bad);
+  font-size: var(--text-xs);
+}
+
+.deccard__reason {
+  margin: var(--space-1) 0 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* ── What runs on a hook ────────────────────────────────────────────────────────
+
+   A row is a registration, not a file: the command is the thing that runs, so it
+   leads, and everything else on the card is a fact about it.
+
+   The four wirings are given four different left edges rather than four shades of
+   the same one. `--bad` is spent only on `file-missing`, which is the state where
+   settings promise a check that is not happening; `unknown` gets a dashed edge
+   because the one thing it must never look like is either of the two answers it
+   is not. That distinction collapsing into a ternary is this codebase's most
+   repeated bug, and here it would collapse in the stylesheet rather than in the
+   code, which is harder to see. */
+
+.hooks__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.hooks__group {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The event name is what a person greps their settings for, so it keeps its casing and its
+   monospace while the sentence beside it does not. */
+.hooks__event {
+  color: var(--chalk);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hooks__when {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hooks__when--unknown {
+  color: var(--warn);
+}
+
+.hooks__note,
+.hooks__empty {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* A directory that would not open. Marked rather than muted: it is the reason several rows
+   below say "could not be checked", and a reader who misses it reads those as faults. */
+.hooks__problem {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--warn);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.hooks__source {
+  margin: 0 0 2px;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.hooks__source--bad {
+  color: var(--chalk);
+}
+
+.hookcard {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-left-width: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* It runs, and the file is there. The only reassuring row on the panel. */
+.hookcard--wired {
+  border-left-color: var(--good);
+}
+
+/* Registered, and the file it names is gone. Settings say something is checking; nothing is. */
+.hookcard--file-missing {
+  border-left-color: var(--bad);
+}
+
+/* Registered, running something we cannot see. Not a fault, so not coloured like one. */
+.hookcard--elsewhere {
+  border-left-color: var(--frame);
+}
+
+/* We could not look. Dashed on purpose — it must not read as either of the two answers above,
+   and a colour alone would be one more shade to tell apart. */
+.hookcard--unknown {
+  border-left-color: var(--warn);
+  border-left-style: dashed;
+}
+
+/* On disk, registered by nothing. The file exists and never runs; dashed all round, because
+   there is no registration here at all to have a state. */
+.hookcard--inert {
+  border-style: dashed;
+  border-left-color: var(--warn);
+}
+
+.hookcard__command {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-family: ui-monospace, monospace;
+  line-height: 1.45;
+  /* A hook command is one long line with quoted paths in it. It wraps rather than scrolling the
+     panel sideways, and breaks anywhere, because there is no space to break at. */
+  overflow-wrap: anywhere;
+}
+
+.hookcard__state {
+  margin: var(--space-1) 0 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.hookcard--file-missing .hookcard__state {
+  color: var(--bad);
+}
+
+.hookcard__meta {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+
+/* ── How full the plan is ──────────────────────────────────────────────────────
+
+   One row per bucket, and a bar only where there is a number for it to mean. The
+   two states with no reading draw no rows at all: an empty track is a shape that
+   says "nothing used", and "we have not looked" must never borrow it. */
+
+.plan__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.plan__empty,
+.plan__note {
+  margin: var(--space-2) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* The notional-cost explanation sits apart from the readings it is about. */
+.plan__note {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--frame);
+  font-size: var(--text-xs);
+}
+
+.planrow {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-left-width: 2px;
+  border-left-color: var(--frame);
+  border-radius: var(--radius-control);
+}
+
+/* The bucket actually constraining you right now. Marked, never reordered — which
+   one binds changes as they fill, and a list that reorders is one you re-read. */
+.planrow--binding {
+  border-left-color: var(--accent);
+}
+
+.planrow__head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.planrow__window {
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-family: ui-monospace, monospace;
+}
+
+.planrow__used {
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A number the CLI did not send. Muted and italic so it does not read as a reading. */
+.planrow__used--unknown {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.planrow__track {
+  margin: var(--space-1) 0 0;
+  height: 6px;
+  border-radius: var(--radius-control);
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.planrow__fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.planrow__meta {
+  margin: var(--space-1) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+.apal__empty {
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* The count of matches the list did not draw. Quieter than the empty state and set apart from
+   the rows above it, because it is a fact about the list rather than an entry in it — a person
+   arrowing down must not walk into it looking for something to press. It appears once the
+   palette can reach every project and conversation by name, which is when a workspace of six
+   hundred could otherwise put six hundred rows in a dialog. */
+.apal__more {
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* `.roster__empty--problem` is declared once, beside the rule it qualifies, further up. A second
+   identical block sat here — harmless while the two agreed, and precisely how the `.pill`
+   collision started. */
+
+
+/* ── Interactive states, swept ──────────────────────────────────────────────────
+
+   F10 made keyboard reachability a promise, and a promise whose state you cannot see is not
+   one. These are the surfaces written before the focus token existed.                          */
+
+.task__run:hover:not(:disabled),
+.card__ask button:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.task__run:focus-visible,
+.card__ask button:focus-visible,
+.card__close:focus-visible,
+.viewtoggle:focus-visible,
+.strip__bar:focus-visible,
+.ask__option:focus-visible,
+#composer:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Disabled means disabled, visibly. A control that does nothing when clicked and looks exactly
+   like one that works is the worst of the three states. */
+.task__run:disabled,
+.card__ask button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* A tool an employee declares that no configured server can answer. Drawn like the inherited-
+   tools warning because it is the same class of fault: a misconfiguration that presents as the
+   agent failing at its job. */
+.roster__tools--dangling {
+  color: var(--destructive);
+}
+
+
+/* ── The scrim ──────────────────────────────────────────────────────────────────
+
+   Behind every panel that covers the app, and behind none of the ones that do not.
+
+   The panels used to float over the transcript and the office with nothing between, which left
+   two things unsaid at once: that the thing under them is not currently what you are working on,
+   and that clicking away is how you leave. Both are conventions old enough that their absence
+   reads as an unfinished build rather than as a choice.
+
+   `--ground-0` at 62% rather than black: black over a warm room is a hole, and the office is the
+   one thing in this app that is meant to look lit. No blur — it costs a compositor layer over a
+   canvas that is already repainting, and it buys nothing a flat wash does not. No transition,
+   because there is no animation in this interface. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(11 14 23 / 0.62);
+}
+
+.scrim[hidden] {
+  display: none;
+}
+
+/* Above the wash. The panels set their own stacking otherwise, and a scrim that covered the
+   panel it belongs to would be a very quiet way to make the app look frozen. */
+.card,
+.card--roster,
+.card--tasks {
+  z-index: 50;
+}
+
+
+/* ── The switcher ───────────────────────────────────────────────────────────────
+
+   One control where three used to be: the horizontal tab strip, the 254 x 12.5px session button
+   in the pane header, and the drawer that button opened.
+
+   Settled against a mock of both readings: no tabs for the project, because a tab strip is hard
+   to control. A tab strip is not a bad list — it is not a list at all. No second
+   line, no room for state, nothing to manage, and it runs out of width at about four projects.
+   The screenshot that prompted this had four and was already full. */
+
+/* ── S1: navigation that reads as navigation ────────────────────────────────────
+
+   Reported after going looking and failing: new projects could not be made at all.
+
+   The control was correct and invisible. It had a caret, hover states and a 32px target, and it
+   still read as a **window title** for two reasons that only show up on screen. It was
+   `flex: 1 1 0`, so it stretched the width of the pane; and its caret was `margin-left: auto`,
+   so the one mark that says *this opens* sat four hundred pixels away from the words it belongs
+   to, hard against the phase readout. A borderless full-width line of text with a glyph at the
+   far end is a title bar. Nobody clicks a title bar.
+
+   So the box is now the size of what it says, its border is drawn at rest rather than on hover,
+   and the caret sits against the label. `--h-md` and `--radius-control` throughout, which is the
+   system the rest of the app's controls already use.
+
+   It is the `.mic` shape, three parts and each with a job the other two cannot do. `.where` is
+   the frame the menu positions against; `.where__pair` is the outline the two segments share,
+   and it clips, which is how welded buttons get rounded outer corners without either of them
+   naming a corner-pair — the design system allows one radius token per rule and `type-scale`
+   enforces it. The menu is a sibling of the pair rather than a child, for the reason written
+   beside the microphone's: a box that clips its children cannot also let one of them out. */
+
+.where {
+  position: relative;
+  /* Shrink to fit, and shrink further when the pane is narrow. `flex: 1 1 0` on the trigger is
+     what stretched it across the whole header in the first place. */
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+}
+
+.where__pair {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  /* `.pane__head` is a window drag region. Anything inside it that does not say otherwise is
+     furniture the mouse moves the window by — it swallows the press and the click never lands,
+     which is invisible to a synthetic `dispatchEvent` and obvious the first time a hand is on a
+     real mouse. Both segments repeat this for themselves; this one keeps the seam between them
+     live. */
+  -webkit-app-region: no-drag;
+}
+
+.switcher {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--h-md);
+  border: 0;
+  padding: 0 var(--space-2);
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.switcher:hover,
+.switcher[aria-expanded='true'] {
+  background: var(--muted);
+}
+
+.switcher:active:not(:disabled) {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.switcher:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Against the label, not at the far edge of the pane. `margin-left: auto` is what put four
+   hundred pixels between the words and the one mark that says they open something. */
+.switcher::after {
+  content: '▾';
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.switcher[aria-expanded='true']::after { content: '▴'; }
+
+/* The other segment: start something new, without opening the list first and without ⌘K.
+
+   32 × 32. WCAG 2.5.8 asks 24 × 24, and the reason this is stated as `--h-md` in both axes
+   rather than left to the glyph is the fault this repository has already measured twice: a
+   control sized by its own text. A `+` is one character wide. */
+.switcher__new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--h-md);
+  min-height: var(--h-md);
+  border: 0;
+  /* The seam. The pair's clip supplies the outer corners. */
+  border-left: 1px solid var(--border-strong);
+  padding: 0;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.switcher__new:hover,
+.switcher__new[aria-expanded='true'] {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.switcher__new:active:not(:disabled) {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.switcher__new:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Downward, because this opener is at the top of the window rather than the bottom.
+
+   `.popmenu` hangs from `bottom: calc(100% + 6px)` — written for the floor's `···` and the
+   composer's `model`, which both sit on the bottom edge. Inheriting that here would open the
+   menu upward through the header and off the top of the window, which is the same bug as the
+   `left: -169px` one the composer's menu had, rotated ninety degrees. Paired with
+   `.popmenu--left` in the markup: this opener is at the left end of its row too. */
+.popmenu--down {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+/* The project is where you are; the conversation is what you are doing there. Both, because
+   the control this replaces said only the second — which is half of "where am I". */
+.switcher__project {
+  flex: none;
+  color: var(--foreground);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.switcher__sep { flex: none; color: var(--ink-faint); }
+
+.switcher__session {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+}
+
+/* Under the trigger and over the transcript, sized to its contents.
+
+   Placed into the transcript's grid row rather than `inset: 0`, which is what the drawer it
+   replaces used: `inset: 0` covers the header too, so a panel opened from a control drew itself
+   over that control, and a list of nine rows took the full 817px of the pane. `align-self:
+   start` with `max-height: 100%` gives a dropdown that starts where it was opened from and stops
+   where its content does. */
+.swlist {
+  position: absolute;
+  top: 100%;
+  left: var(--space-2);
+  right: var(--space-2);
+  z-index: 5;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  background: var(--popover);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.swlist[hidden] { display: none; }
+
+.swgroup {
+  margin: var(--space-3) 0 var(--space-1);
+  padding: 0 var(--space-2);
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.swgroup:first-child { margin-top: 0; }
+
+.swrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-2);
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.swrow:hover { background: var(--muted); }
+
+.swrow:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+/* Where you are. `aria-current` carries it for assistive tech; this is the same fact drawn. */
+.swrow--current {
+  background: var(--muted);
+  border-color: var(--border-strong);
+}
+
+/* The tag that was asked for. Drawn for the current row *and* for a running one, in different
+   colours, because "where I am" and "this is working" are different facts — a list that
+   conflated them would say the office is idle whenever you looked away from it. */
+.swrow__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.swrow--current .swrow__dot { background: var(--primary); }
+.swrow__dot--running { background: var(--good); }
+
+.swrow__lines {
+  display: grid;
+  min-width: 0;
+}
+
+.swrow__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+.swrow__meta {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+/* `+ new` sits in the list rather than in the header, which is Khalid's: it means `new` never
+   competes for space with the thing that says where you are. */
+.swrow--add {
+  min-height: var(--h-md);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+.swrow--add:hover { color: var(--foreground); }
+
+/*
+ * The name field inside the new-project row.
+ *
+ * The row was a button and is now a button *or* a field, because `window.prompt` does not exist
+ * in Electron and the button that called it did nothing. Both fill the row, so pressing it does
+ * not change the list's height and nothing below it moves.
+ */
+.swrow__label {
+  all: unset;
+  cursor: pointer;
+  width: 100%;
+  display: block;
+}
+
+.swrow__input {
+  all: unset;
+  width: 100%;
+  display: block;
+  color: var(--foreground);
+  font-size: var(--text-xs);
+  font-family: var(--mono);
+}
+
+.swrow__input::placeholder { color: var(--muted-foreground); }
+
+/*
+ * `all: unset` takes `display: none` off `[hidden]` too.
+ *
+ * The row swaps a button for a field by setting `hidden`, and both rules above start with
+ * `all: unset` — which resets `display` to its initial value and so beats the user agent's
+ * `[hidden] { display: none }`. The result was the button sitting beside the field it had just
+ * been replaced by: visible in the running app, and invisible to every test, because `hidden`
+ * was `true` the whole time and the DOM agreed. Only the pixels disagreed.
+ */
+.swrow__label[hidden],
+.swrow__input[hidden] { display: none; }
+
+.swempty {
+  margin: 0;
+  padding: var(--space-2);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+
+/* ── A row's own actions ────────────────────────────────────────────────────────
+
+   Quiet at rest, revealed on hover or focus, and never hidden — they keep their labels and
+   their place in the tab order the whole time. Same trade the roster made when `Send home` and
+   `Fire` stopped being permanently drawn under every employee: a list of four projects should
+   read as four projects, not as twelve buttons, and a destructive action belongs one step away
+   rather than under the cursor by default.
+
+   No animation. The border and the colour change, and that is all. */
+.swrow__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex: none;
+}
+
+.swact {
+  min-height: var(--h-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-2);
+  background: none;
+  color: transparent;
+  font: inherit;
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* `color: transparent` rather than `visibility: hidden` or `display: none`: the button keeps
+   its box, so a row does not change width when you point at it, and it stays reachable by
+   keyboard — which `display: none` would take away. */
+.swrow:hover .swact,
+.swrow:focus-within .swact {
+  color: var(--muted-foreground);
+}
+
+.swrow:hover .swact:hover,
+.swrow:focus-within .swact:hover {
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.swact:focus-visible {
+  color: var(--foreground);
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+/* The only one that destroys anything, and the only one that says so before you press it. */
+.swrow:hover .swact--danger:hover,
+.swrow:focus-within .swact--danger:hover {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+/* ── One question at a time ─────────────────────────────────────────────────────
+
+   S2/U6b. `manager.md` says one question per turn, and prompt guidance loses eventually — a
+   turn arrived with three `ask` blocks and the panel stacked three cards. The queue in
+   `AskQueue` marks the ones behind the open question `hidden`, and `.ask` sets `display: flex`,
+   so without the guard below every one of them would stay on screen with `hidden` set. That is
+   the fault `hidden.test.ts` exists for, twice shipped already.                                */
+
+.ask[hidden] {
+  display: none;
+}
+
+/* How many are still waiting. Quiet, under the skip, and absent when there are none — an
+   always-present "0 more questions" is a line that teaches you to stop reading this spot. */
+.ask__waiting {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+/* ── A turn's refusals, as one block ────────────────────────────────────────────
+
+   S2/U6a. Nineteen refusals used to be nineteen `.notice` paragraphs, each repeating the same
+   two sentences around a different command. This is the same red notice — it keeps the `notice`
+   class and everything that comes with it — laid out as a heading, a list of the distinct calls,
+   and the advice.
+
+   The list is the part that had to survive the fix: a summary that dropped the commands would
+   have removed the only fact its reader can act on.                                            */
+
+.refusal {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.refusal__head {
+  margin: 0;
+  font-weight: 600;
+}
+
+.refusal__calls {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Wrapping rather than scrolling, because a refused command that runs off the edge is a command
+   you cannot read, and this block exists to be read. */
+.refusal__call {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.refusal__tool {
+  font-weight: 600;
+}
+
+.refusal__command {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* "× 11" — the tell that an agent was looping rather than working through a list. Loud enough
+   to catch in a scan, which is the whole difference between this and the wall it replaced. */
+.refusal__times {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.refusal__cause {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+.refusal__advice {
+  margin: 0;
+  color: var(--muted-foreground);
+}
+
+/* Employees somebody else maintains. The rows are the memory cards' shape — one bordered block
+   per person — because they are the same kind of thing: a record about something that lives
+   outside this app, read rather than operated. */
+.maintained__find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.maintained__field {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+/* `display: flex` beats the `hidden` attribute, so the transport field the form is not asking
+   for would stay on screen. Caught by `hidden.test.ts` before it was ever drawn. */
+.maintained__field[hidden] {
+  display: none;
+}
+
+.maintained__field input,
+.maintained__field select {
+  padding: var(--space-1);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+}
+
+.maintained__bar {
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.maintained {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+}
+
+/* Somebody a source is offering is not somebody who works here yet. Dashed, on the same reasoning
+   as a memory note: the difference should be visible before the words explaining it are read. */
+.maintained--offer {
+  border-style: dashed;
+}
+
+.maintained__name {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.maintained__where {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+
+.maintained__desc {
+  margin: var(--space-1) 0 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.maintained__standing {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Five tones, because the five answers are not variations of one answer. An update waiting is not
+   a failure to reach a repository, and neither is a colleague deleting the agent. */
+.maintained__standing--level {
+  color: var(--good);
+}
+
+.maintained__standing--behind {
+  color: var(--accent);
+}
+
+.maintained__standing--ours,
+.maintained__standing--unknown {
+  color: var(--muted-foreground);
+}
+
+.maintained__standing--gone {
+  color: var(--warn);
+}
+
+.maintained__detail {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* The sentence that stands where a button would be. Indented like an unreadable memory, for the
+   same reason: it must not read as the row simply having nothing more to say. */
+.maintained__blocked {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--frame);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.maintained__take,
+.maintained__hire {
+  margin-top: var(--space-2);
+}
+
+.maintained__empty,
+.maintained__problem {
+  margin: var(--space-2) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.maintained__problem {
+  color: var(--warn);
+}
+
+/* Both lists in this panel are cards of the same shape holding the same names — an offer and an
+   employee. Seen in the running app: `ariel-review` appeared twice with nothing between them. */
+.maintained__group {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Services the office can reach. Same card shape as the maintained rows — both are records about
+   something configured outside this app, read rather than operated. */
+.conn {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-control);
+}
+
+.conn__name {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Three states, three colours. `configured` is the resting one and it is deliberately not the
+   colour of success — a server declared in a file and a server that answered are different
+   claims, and `capabilities.ts` refuses to conflate them. */
+.conn__state {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.conn__state--live {
+  color: var(--good);
+}
+
+.conn__state--configured {
+  color: var(--muted-foreground);
+}
+
+.conn__state--failed {
+  color: var(--warn);
+}
+
+.conn__where {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-family: ui-monospace, monospace;
+}
+
+.conn__blocked {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--frame);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.conn__remove {
+  margin-top: var(--space-2);
+}
+
+.conn__empty,
+.conn__problem {
+  margin: var(--space-2) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.conn__problem {
+  color: var(--warn);
+}
+
+/* `.maintained__field` is `flex: 1 1 12rem` because it sits in a wrapping *row* over there. In
+   this column that makes every field grow to fill the panel — seen in the running app as a screen
+   of blank space between Name and How it is reached, with the list of services above squeezed to
+   nothing. The fields size to their content here, and the form does not take the list's height. */
+.conn__form {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.conn__form .maintained__field {
+  flex: 0 0 auto;
+}
+
+.conn__form .btn {
+  align-self: flex-start;
+}
+
+/* Under the two fields a credential would be pasted into. Said before the refusal is needed. */
+.conn__hint {
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+  line-height: 1.4;
+}
+
+/* What a push would carry. The verdicts are not shades of one state — "stays on this machine" and
+   "a push would publish it" are opposite answers, and only one of them is an emergency. */
+.share__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--chalk);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.share {
+  margin: 0 0 var(--space-1);
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--frame);
+}
+
+.share--leaking {
+  border-left-color: var(--warn);
+}
+
+.share--kept {
+  border-left-color: var(--good);
+}
+
+.share__path {
+  margin: 0;
+  color: var(--chalk);
+  font-size: var(--text-xs);
+}
+
+.share__said,
+.share__detail {
+  margin: 0 0 var(--space-1);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.share--leaking .share__said {
+  color: var(--warn);
+}
+
+/* The other four verdicts. No border colour of their own: only "kept" and "leaking" are answers
+   worth reading at a glance, and giving six states six colours makes none of them mean anything. */
+.share--shared,
+.share--withheld,
+.share--nowhere,
+.share--unknown {
+  border-left-color: var(--frame);
+}
+
+/*
+ * One file a dispatch touched.
+ *
+ * The kind sits before the path rather than after it, because a column of `changed` and
+ * `created` down the left edge is scannable in a way a suffix is not — and *changed* is the word
+ * somebody looking for damage is scanning for. The path is allowed to be long and to wrap; these
+ * are absolute paths from an employee's own tool call, and truncating one loses the end, which
+ * is the part that identifies the file.
+ */
+.roster__file {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin-top: 0.25rem;
+  font-size: var(--text-sm);
+}
+
+.roster__kind {
+  flex: none;
+  min-width: 3.75rem;
+  color: var(--ink-dim);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+.roster__path {
+  color: var(--ink);
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+/*
+ * When a dispatch was sent, beside who it was sent to.
+ *
+ * Dimmed and small: on a row whose subject is *what changed*, the timestamp is how you tell two
+ * dispatches to the same employee apart, and nothing more. It earns a place and not a weight.
+ */
+.roster__meta {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The bytes replaced, and the bytes that replaced them.
+ *
+ * Two blocks rather than an inline diff, because that is what the stream gives us: an employee
+ * said *this text becomes that text*, and the honest rendering of a replacement is the pair.
+ * Nothing is coloured green or red — those read as "added" and "removed" lines in a unified
+ * diff, and drawing that vocabulary over a pair of strings would be claiming a shape the data
+ * does not have.
+ *
+ * Scrolls rather than truncates. A middle-elided string looks like the whole of a short one, and
+ * the end of a replacement is usually where the difference is.
+ */
+.roster__was,
+.roster__now {
+  margin: 0.25rem 0 0;
+  padding: 0.35rem 0.5rem;
+  max-height: 7rem;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--ground-2);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* The prior state, set back so the eye lands on what it became. */
+.roster__was {
+  color: var(--ink-dim);
+}
+
+/*
+ * What a result row will do, at its trailing edge.
+ *
+ * `--ink-faint` and not the accent: this is a label, not a control. The row is the control, and
+ * a second thing that looks pressable inside a button is a target nobody can hit.
+ */
+.find__does {
+  margin-left: auto;
+  flex: none;
+  align-self: center;
+  color: var(--ink-faint);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * The memory a search sent you to.
+ *
+ * A ring rather than a fill: the card already carries its own text colours, and re-grounding it
+ * would make the one you were sent to the hardest one to read.
+ */
+.memory__card--found {
+  outline: 2px solid var(--lamp);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}

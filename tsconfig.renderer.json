@@ -1,0 +1,26 @@
+{
+  // Typecheck for the browser half.
+  //
+  // It exists so that `tsconfig.json` does not have to. The root config deliberately omits the
+  // DOM library, which means main-process code that reaches for `document` or `window` fails
+  // to compile instead of failing at three in the morning — and the price of that guard is
+  // this second config for the one directory that genuinely is a browser.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"]
+  },
+  // `exclude` is inherited from the base and filters `include`, so without this override the
+  // renderer is excluded here as well and the whole config checks nothing — silently, and with
+  // a clean exit code.
+  "exclude": [],
+  // `*.dom.test.ts` is here because it is the only kind of test that drives a renderer, and a
+  // renderer needs a DOM to be checked against. The base config excludes exactly this pattern,
+  // so between the two configs every file is checked once and no test escapes both.
+  "include": [
+    "src/renderer/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "test/**/*.dom.test.ts"
+  ]
+}

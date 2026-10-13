@@ -1,0 +1,121 @@
+# The checks both machines already run by hand.
+#
+# `02-BOUNDARIES.md` says a red `dev` blocks the other machine, which is the whole argument for
+# this file: with two people pushing to one integration branch, "somebody remembers to run the
+# tests" is not a plan. It became less optional still when one machine spent a stretch unable to
+# run them at all.
+#
+# Deliberately small. It runs exactly what a person runs — no linters nobody has agreed to,
+# nothing that can fail for a reason unrelated to the change. A check that cries wolf gets
+# skipped, and a skipped check is worse than none because it looks like cover.
+#
+# **Coverage is measured and not gated**, which reconciles two lines that looked opposed. The
+# `correct` exit condition asks for "coverage measured, not assumed"; this comment used to say
+# "no coverage gates". Both are right, and they conflict only if measuring implies gating. A
+# threshold nobody agreed on is precisely the crying wolf above; a number nobody ever prints is
+# precisely the assumption the exit condition was written against. The test step reports it and
+# nothing fails on it.
+name: checks
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+  # Ask for a run without pushing anything.
+  #
+  # This file sat `disabled_manually` from 2026-08-20 to 2026-08-27 — 257 commits with no run,
+  # while the file itself stayed in the tree looking like cover, which is the failure its own
+  # header names. Switching it back on does not produce a run: `push` and `pull_request` both
+  # need somebody to have work in hand, so the first evidence that seven days of macOS-only
+  # commits still build on Linux arrives whenever the next PR happens to open.
+  #
+  # That couples "is the check alive" to "did somebody happen to push", and those are two
+  # different questions. `gh workflow run checks.yml --ref dev` answers the first one on its own.
+  workflow_dispatch:
+
+# A new push supersedes the run in flight. Nobody needs the result for a commit that has already
+# been replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    # Raised from 10 to 20 on 2026-09-04, because at 10 this job was being killed and the kill
+    # was unreadable.
+    #
+    # Measured over 97 jobs, using `started_at` to `completed_at` from the jobs API — which is
+    # what this setting bounds. A run's own `createdAt` to `updatedAt` is the wrong number and
+    # says so plainly once you look: it includes queue time, which has run as high as 11.7
+    # minutes, and it reports "successes" of 14.4 under a 10-minute ceiling.
+    #
+    #   success    n=70   slowest 9.93   next four 9.90 9.53 9.40 9.40
+    #   cancelled  n=25   nine of them clustered at 10.15 - 10.28
+    #
+    # **Four seconds of headroom.** The slowest passing job and the fastest killed one are the
+    # same work on differently-loaded runners, and the nine at 10.15-10.28 are not superseded
+    # pushes — that is the ceiling plus shutdown grace, on five branches including `dev` twice.
+    #
+    # What makes it worth fixing rather than tolerating is the label. GitHub reports a
+    # `timeout-minutes` kill as `cancelled`, the same conclusion string as a run that
+    # `cancel-in-progress` replaced. So a third of everything cancelled here was a hard failure
+    # wearing a supersede's name, and the honest reading of the branch's own history — "nothing
+    # failed, some runs got replaced" — was wrong nine times.
+    #
+    # 20 is not a measurement, it is headroom: about double the slowest real job, chosen so a
+    # slow runner cannot reach it and a genuine hang still ends. If the slowest success ever
+    # passes ~15, this number needs revisiting rather than raising by reflex.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Node the app is developed against. Not `latest`: a runtime that changes
+          # under us turns an unrelated morning into a debugging session.
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Both configs. The renderer has its own because it is the only code that may touch the
+      # DOM, and checking one without the other has let a renderer-only error through before.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # The renderer is loaded from disk by `file://`, so `tsc` alone does not prove the app can
+      # start. This catches an asset the build forgot to copy — which has happened.
+      #
+      # Before the tests, and the ordering is the point.
+      #
+      # It used to run after, and that had a real virtue: a test reading `dist/` failed here and
+      # passed on a developer's machine, which caught two genuine bugs in one day — a provenance
+      # check asserting against a manifest CI had not written, and a seed-coverage guard doing the
+      # same. Both were fixed by removing the dependency rather than by reordering.
+      #
+      # What it also did was leave every assertion *about the built artifact* dormant. This
+      # repository ships a package; "the manifest promised three files the package did not
+      # contain" is a fault it has actually had, and an assertion that only runs when somebody
+      # happens to have built locally is not a check, it is a coincidence.
+      #
+      # The class this ordering used to catch is gone rather than hidden: the suite passes with
+      # `dist/` absent — verified by moving it aside, 2377 of 2377 — because the last runtime read
+      # was replaced by a `git ls-files` expansion. So the canary has nothing left to catch, and
+      # the dormant assertions have something real to say.
+      #
+      # The risk this accepts, stated rather than discovered later: a *new* test that reads
+      # `dist/` will now pass here and fail for anybody running `npm test` on a fresh clone. That
+      # is the failure this order cannot see, and it is why `scripts/shipped.mjs` derives the seed
+      # list from git rather than from the build.
+      - name: Build
+        run: npm run build
+
+      # A strict superset of `npm test`: same tests, same exit code, plus a printed summary. One
+      # run rather than two, so measuring costs no CI minutes and cannot drift from what ran.
+      - name: Tests, with coverage measured
+        run: npm run coverage

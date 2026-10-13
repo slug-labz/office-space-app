@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────
+# Office Space — what NEVER leaves your machine
+#
+# The rule: we ship the OFFICE (agents, skills, commands, settings).
+# You keep the WORK (memory, projects, history, credentials).
+# ─────────────────────────────────────────────────────────────────────
+
+# --- Credentials. Never, under any circumstances. ---
+.credentials.json
+.env
+.env.*
+!.env.example
+
+# --- Your memory is yours ---
+memory/**
+!memory/.gitkeep
+!memory/README.md
+
+# --- Your projects are yours (the convention is shipped, the content is not) ---
+projects/**
+!projects/.gitkeep
+!projects/README.md
+!projects/_TEMPLATE/
+!projects/_TEMPLATE/**
+
+# --- Claude Code local state ---
+.claude/settings.local.json
+.claude/history/
+.claude/todos/
+.claude/shell-snapshots/
+.claude/statsig/
+.claude/projects/
+.claude/.office-space/
+
+# --- Office Space runtime state (session registry, floor cache) ---
+.office-space/
+
+# --- Art you licensed yourself ---
+# Office Space ships one theme: the characters it draws in code. If you buy a commercial
+# pixel-art pack, it goes here — and it stays here. Every pack we looked at permits
+# commercial use and forbids redistribution, so committing one would breach the licence you
+# just paid for. See docs/themes.md.
+assets/themes/**
+!assets/themes/README.md
+
+# --- Node / build ---
+# No trailing slash, deliberately.
+#
+# `node_modules/` matches a directory and does NOT match a **symlink** named node_modules — git
+# stages it, and what goes in is an absolute path that means nothing on anybody else's machine.
+#
+# That is not hypothetical here: `scripts/preflight.mjs` tells an agent working in a worktree to
+# create exactly that symlink, because a fresh install per worktree costs minutes and a network.
+# So the documented sequence was: run preflight, follow its fix, `git add -A`, commit a symlink
+# to /Users/somebody/... Caught by the second session checking `git status` after staging rather
+# than assuming, on the night both were doing it.
+node_modules
+dist/
+out/
+# electron-builder's output. `dist/` above is the compiled source; this is the 286MB packaged
+# application, and it appeared the first time anybody ran `npm run package` — which is also the
+# first time anybody could have noticed it was missing from this list. `git add -A` in a repo
+# that has been packaged would otherwise commit an entire Electron runtime.
+release/
+*.log
+.DS_Store
+
+# --- Manual checks that spend real money to run ---
+scratch/
+
+# --- The reference workspace is yours, not ours ---
+# A copy of a real, working `.claude/` workspace, kept here so the office can be built
+# against something verified rather than something imagined. It carries knowledge of
+# projects that are not this one, so it is read here and never shipped.
+reference/
+
+# --- Agent worktrees ---
+# Here rather than in `.git/info/exclude`, which is where this rule used to live alone.
+#
+# `info/exclude` is per-checkout and uncommitted: it is one machine's config, it arrives in no
+# clone, and — the part that bit — **git does not apply it inside a linked worktree**. Committed
+# rules in this file do. So the 374 MB of agent checkouts `docs/the-sweep.md` measured were
+# ignored on exactly one working tree on exactly one machine, and nowhere else. In a fresh clone
+# `git add -A` would have staged all of it, which is the accident `release/` above is here to
+# prevent and the same one this line prevents.
+#
+# It also makes the question answerable by a test. `repo-health.test.ts` asks git whether a
+# documented path is an ignored runtime artifact or a repo file it should insist exists; while
+# the rule lived only in `info/exclude`, git gave a different answer per checkout and the test
+# graded the machine rather than the commit.
+#
+# No trailing slash, for the second time in this file and for a second reason. `worktrees/`
+# matches only something git can see is a directory, so it says nothing about a path that is not
+# on this disk — which is the whole case here: in a fresh clone and in every worktree the
+# directory is absent, and `git check-ignore .claude/worktrees` came back "not ignored" with the
+# slash on. Without it the rule is about the name, so git answers the same everywhere.
+.claude/worktrees
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/.graphify_labels.json

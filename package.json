@@ -1,0 +1,152 @@
+{
+  "name": "office-space",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A desktop office for your Claude agents. The backend is your .claude/ workspace; this is the face on it.",
+  "author": "slug-labz",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/main/main.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json",
+    "test": "tsx --test --test-timeout=60000 test/*.test.ts",
+    "coverage": "tsx --test --test-timeout=60000 --experimental-test-coverage test/*.test.ts",
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "discover": "tsx src/main/cli/discover.ts",
+    "package": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "eval": "tsx src/main/cli/eval.ts",
+    "harness": "node scripts/harness.mjs",
+    "checks:local": "node scripts/ci-local.mjs",
+    "release": "node scripts/release.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "electron": "^43.4.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "dev.slug-labz.office-space",
+    "productName": "Office Space",
+    "copyright": "Copyright (c) 2026 slug-labz",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets/build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!dist/renderer/dev.html",
+      "!dist/renderer/mock.js",
+      "!dist/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": ".claude",
+        "to": "app/.claude",
+        "filter": [
+          "agents/**/*",
+          "commands/**/*",
+          "hooks/**/*",
+          "skills/**/*",
+          "settings.json"
+        ]
+      },
+      {
+        "from": "projects/_TEMPLATE",
+        "to": "app/projects/_TEMPLATE"
+      },
+      {
+        "from": "projects/README.md",
+        "to": "app/projects/README.md"
+      },
+      {
+        "from": "assets/themes",
+        "to": "app/assets/themes",
+        "filter": [
+          "README.md"
+        ]
+      },
+      {
+        "from": "CLAUDE.md",
+        "to": "app/CLAUDE.md"
+      },
+      {
+        "from": ".gitignore",
+        "to": "app/.gitignore"
+      },
+      {
+        "from": "memory/README.md",
+        "to": "app/memory/README.md"
+      }
+    ],
+    "dmg": {
+      "window": {
+        "width": 540,
+        "height": 460
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 160,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 160,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 140,
+          "y": 320,
+          "type": "file",
+          "path": "assets/dmg/INSTALL.txt"
+        },
+        {
+          "x": 400,
+          "y": 320,
+          "type": "file",
+          "path": "assets/dmg/Fix permissions.command"
+        }
+      ]
+    },
+    "mac": {
+      "icon": "assets/build/icon.png",
+      "identity": null,
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Office Space uses your microphone only when you press Speak, so you can dictate a message instead of typing it. The recording is transcribed by a program on this Mac and deleted straight after. Nothing you say is sent anywhere."
+      }
+    },
+    "linux": {
+      "icon": "assets/build/icon.png",
+      "category": "Development",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    }
+  }
+}
